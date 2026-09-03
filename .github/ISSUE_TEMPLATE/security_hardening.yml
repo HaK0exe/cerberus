@@ -1,0 +1,26 @@
+name: Security / hardening task
+description: Non-vulnerability security work (hardening, review, test coverage)
+labels: ["type:security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For an actual vulnerability, use a private
+        [security advisory](https://github.com/HaK0exe/cerberus/security/advisories/new)
+        instead of this template.
+  - type: textarea
+    id: description
+    attributes:
+      label: What needs hardening/reviewing?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: input
+    id: adr
+    attributes:
+      label: Related ADR / threat model section (if any)

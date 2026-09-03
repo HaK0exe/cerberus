@@ -1,0 +1,37 @@
+# AWS credential detection rules.
+# See docs/development/writing-rules.md for the schema reference.
+
+- id: aws-access-key-id
+  name: AWS Access Key ID
+  regex: '\b((?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASCA)[A-Z0-9]{16})\b'
+  secret_group: 1
+  keywords:
+    - aws
+    - access_key
+    - aws_access_key_id
+  negative_keywords:
+    - example
+    - placeholder
+    - dummy
+  entropy:
+    enabled: false
+  severity: high
+  confidence: 0.98
+
+- id: aws-secret-access-key
+  name: AWS Secret Access Key
+  regex: '(?i)aws_secret_access_key\s*[:=]\s*["'']?([A-Za-z0-9/+=]{40})["'']?'
+  secret_group: 1
+  keywords:
+    - aws
+    - secret_access_key
+    - aws_secret_access_key
+  negative_keywords:
+    - example
+    - placeholder
+    - dummy
+  entropy:
+    enabled: true
+    threshold: 4.2
+  severity: critical
+  confidence: 0.9

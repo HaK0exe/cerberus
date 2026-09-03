@@ -1,0 +1,32 @@
+# GitHub credential detection rules.
+
+- id: github-pat-classic
+  name: GitHub Personal Access Token (classic)
+  regex: '\b(ghp_[A-Za-z0-9]{36})\b'
+  secret_group: 1
+  keywords:
+    - github
+    - token
+    - ghp_
+  negative_keywords:
+    - example
+    - placeholder
+  entropy:
+    enabled: false
+  severity: high
+  confidence: 0.97
+
+- id: github-pat-fine-grained
+  name: GitHub Fine-Grained Personal Access Token
+  regex: '\b(github_pat_[A-Za-z0-9_]{22,255})\b'
+  secret_group: 1
+  keywords:
+    - github
+    - token
+  negative_keywords:
+    - example
+    - placeholder
+  entropy:
+    enabled: false
+  severity: high
+  confidence: 0.97

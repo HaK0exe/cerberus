@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose a new capability or enhancement
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today, or what's painful?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core / detector
+        - rules
+        - git scanner
+        - web scanner
+        - llm
+        - api
+        - mcp
+        - remediation / aws
+        - terraform / deploy
+        - ci
+        - docs
+        - other
+    validations:
+      required: true

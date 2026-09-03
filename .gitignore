@@ -1,0 +1,22 @@
+/bin/
+/dist/
+*.test
+*.out
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+
+# Terraform
+deploy/terraform/**/.terraform/
+deploy/terraform/**/*.tfstate
+deploy/terraform/**/*.tfstate.backup
+deploy/terraform/**/.terraform.lock.hcl
+deploy/terraform/**/*.tfvars
+!deploy/terraform/**/*.tfvars.example
+
+# OS
+.DS_Store

@@ -1,0 +1,36 @@
+# Generic high-entropy token / JWT detection rules.
+# These are lower-confidence by nature; expect most of them to route
+# through the LLM-review band ([0.70, 0.89]) rather than auto-finding.
+
+- id: generic-jwt
+  name: Generic JSON Web Token
+  regex: '\b(eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b'
+  secret_group: 1
+  keywords: []
+  negative_keywords:
+    - example
+    - sample
+  entropy:
+    enabled: true
+    threshold: 4.0
+  severity: medium
+  confidence: 0.6
+
+- id: generic-api-key-assignment
+  name: Generic API Key Assignment
+  regex: '(?i)(api[_-]?key|secret|token)\s*[:=]\s*["'']([A-Za-z0-9_\-/+=]{20,})["'']'
+  secret_group: 2
+  keywords:
+    - api_key
+    - secret
+    - token
+  negative_keywords:
+    - example
+    - placeholder
+    - your_api_key
+    - changeme
+  entropy:
+    enabled: true
+    threshold: 3.5
+  severity: medium
+  confidence: 0.5

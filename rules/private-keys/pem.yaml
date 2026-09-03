@@ -1,0 +1,12 @@
+# PEM-encoded private key material.
+
+- id: pem-private-key
+  name: PEM Private Key Block
+  regex: '-----BEGIN ((RSA|EC|DSA|OPENSSH|PGP) )?PRIVATE KEY-----'
+  secret_group: 0
+  keywords: []
+  negative_keywords: []
+  entropy:
+    enabled: false
+  severity: critical
+  confidence: 0.99

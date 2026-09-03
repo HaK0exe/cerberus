@@ -1,0 +1,27 @@
+# Stripe credential detection rules.
+
+- id: stripe-secret-key-live
+  name: Stripe Live Secret Key
+  regex: '\b(sk_live_[A-Za-z0-9]{24,247})\b'
+  secret_group: 1
+  keywords:
+    - stripe
+  negative_keywords:
+    - example
+    - placeholder
+  entropy:
+    enabled: false
+  severity: critical
+  confidence: 0.98
+
+- id: stripe-secret-key-test
+  name: Stripe Test Secret Key
+  regex: '\b(sk_test_[A-Za-z0-9]{24,247})\b'
+  secret_group: 1
+  keywords:
+    - stripe
+  negative_keywords: []
+  entropy:
+    enabled: false
+  severity: low
+  confidence: 0.9
