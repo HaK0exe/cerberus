@@ -11,6 +11,8 @@ import (
 	"github.com/HaK0exe/cerberus/internal/detector"
 	"github.com/HaK0exe/cerberus/internal/policy"
 	"github.com/HaK0exe/cerberus/internal/rules"
+	"github.com/HaK0exe/cerberus/internal/sarif"
+	"github.com/HaK0exe/cerberus/internal/version"
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
 )
 
@@ -94,7 +96,7 @@ func renderFindings(format string, findings []cerberus.Finding) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(findings)
 	case "sarif":
-		return fmt.Errorf("sarif output is not implemented yet (see Sprint 2)")
+		return sarif.Write(os.Stdout, findings, "cerberus", version.Version)
 	case "text", "":
 		if len(findings) == 0 {
 			fmt.Println("no findings")

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	gitscanner "github.com/HaK0exe/cerberus/internal/scanner/git"
@@ -31,10 +33,31 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 				mode, ref = gitscanner.ModeBranch, branch
 			}
 
+			d, err := buildDetector(flags.rulesDir)
+			if err != nil {
+				return err
+			}
+
 			s := gitscanner.New()
-			opts := cerberus.ScanOptions{History: history, Staged: staged, Branch: branch}
-			_, err := s.Scan(cmd.Context(), gitscanner.Repository{Path: args[0], Mode: mode, Ref: ref}, opts)
-			return err
+			artifacts, err := s.Scan(cmd.Context(), gitscanner.Repository{Path: args[0], Mode: mode, Ref: ref}, cerberus.ScanOptions{
+				History: history,
+				Staged:  staged,
+				Branch:  branch,
+			})
+			if err != nil {
+				return fmt.Errorf("scanning %s: %w", args[0], err)
+			}
+
+			var all []cerberus.Finding
+			for artifact := range artifacts {
+				findings, err := d.Detect(cmd.Context(), artifact)
+				if err != nil {
+					return fmt.Errorf("scanning %s: %w", artifact.Path, err)
+				}
+				all = append(all, findings...)
+			}
+
+			return renderFindings(flags.format, all)
 		},
 	}
 	scan.Flags().BoolVar(&staged, "staged", false, "scan staged changes only")

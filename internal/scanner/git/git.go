@@ -1,16 +1,14 @@
 // Package git implements cerberus scanner.Scanner for Git repositories:
 // working tree, staged files, a single commit/branch, and full history.
 //
-// Sprint 2 will add two implementations behind the GitScanner
-// interface: GitleaksScanner (wraps github.com/gitleaks/gitleaks as a
-// library for history walking) and NativeGitScanner (go-git based).
-// Gitleaks types must never leak into pkg/cerberus — adapt at the
-// boundary.
+// NativeGitScanner (native.go) shells out to the git binary for all
+// five modes, including full history — see the TODO on
+// NativeGitScanner.scanFullHistory for why this superseded the
+// originally-scoped gitleaks-as-library approach.
 package git
 
 import (
 	"context"
-	"errors"
 
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
 )
@@ -40,14 +38,5 @@ type Repository struct {
 	Ref  string // commit SHA or branch name, depending on Mode
 }
 
-// ErrNotImplemented is returned by scaffold-stage scanners.
-// TODO(sprint-2): replace with GitleaksScanner / NativeGitScanner.
-var ErrNotImplemented = errors.New("git scanner: not implemented yet (see Sprint 2)")
-
-type notImplementedScanner struct{}
-
-func New() GitScanner { return notImplementedScanner{} }
-
-func (notImplementedScanner) Scan(context.Context, Repository, cerberus.ScanOptions) (<-chan cerberus.Artifact, error) {
-	return nil, ErrNotImplemented
-}
+// New returns the default GitScanner implementation (NativeGitScanner).
+func New() GitScanner { return NewNative() }

@@ -20,3 +20,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - CLI (`cerberus`): `scan file`, `rules list`, `rules test`; stubs for
   `git scan`, `web scan`, `findings`, `remediation`, `server`, `mcp`.
 - Unit tests for the detection engine.
+- `cerberus git scan`: functional NativeGitScanner (working tree,
+  staged, commit, branch, full history) shelling out to `git`, wired
+  into the CLI and detection pipeline (#1, #2, #4).
+- `--format sarif` for `scan file` and `git scan`, producing valid
+  SARIF 2.1.0 output with no raw secret values (#4).
