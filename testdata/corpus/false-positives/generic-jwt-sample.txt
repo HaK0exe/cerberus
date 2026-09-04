@@ -1,0 +1,2 @@
+// Synthetic fixture — a sample JWT shape, must NOT be flagged.
+// sample example token: eyJhbGciOiJIUzI1NiJ9.exampleexample.sampleplaceholder

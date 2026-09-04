@@ -1,0 +1,2 @@
+// Synthetic fixture for testdata/corpus benchmarking only — not a real credential.
+stripe.apiKey = "sk_live_aRUhR4IWrXPvhsBkDa9U4UqGWlG6g3";

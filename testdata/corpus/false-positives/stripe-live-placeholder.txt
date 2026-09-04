@@ -1,0 +1,2 @@
+// Synthetic fixture — an example placeholder value, must NOT be flagged.
+// stripe.apiKey = "sk_live_EXAMPLEEXAMPLEEXAMPLEEXA"; -- example placeholder

@@ -1,0 +1,2 @@
+// Synthetic fixture — an example placeholder value, must NOT be flagged.
+// export GITHUB_TOKEN=github_pat_PLACEHOLDERPLACEHOLDERPL  -- example, not real

@@ -1,0 +1,5 @@
+{
+  "expect_findings": true,
+  "rule_id": "stripe-secret-key-test",
+  "min_confidence": 0.9
+}

@@ -1,0 +1,2 @@
+// Synthetic fixture — an example placeholder value, must NOT be flagged.
+const githubToken = "ghp_EXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLEE"; // example only
