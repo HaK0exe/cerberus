@@ -23,7 +23,7 @@ type FileSink struct {
 // OpenFileSink opens (creating if necessary) an append-only file at
 // path for use as a FileSink. The caller must Close it when done.
 func OpenFileSink(path string) (*FileSink, error) {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304 -- path is an operator-supplied audit log destination
 	if err != nil {
 		return nil, fmt.Errorf("opening audit log %s: %w", path, err)
 	}

@@ -41,19 +41,19 @@ func newGitInstallHookCmd(flags *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := os.MkdirAll(hooksDir, 0o755); err != nil {
+			if err := os.MkdirAll(hooksDir, 0o750); err != nil {
 				return fmt.Errorf("creating hooks directory %s: %w", hooksDir, err)
 			}
 
 			path := filepath.Join(hooksDir, "pre-commit")
-			if existing, err := os.ReadFile(path); err == nil && !force {
+			if existing, err := os.ReadFile(path); err == nil && !force { // #nosec G304 -- path is this repo's own .git/hooks/pre-commit
 				if !bytes.Contains(existing, []byte(hookMarker)) {
 					return fmt.Errorf("%s already exists and was not installed by cerberus — rerun with --force to overwrite it", path)
 				}
 			}
 
 			script := preCommitHookScript(failOn)
-			if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+			if err := os.WriteFile(path, []byte(script), 0o755); err != nil { // #nosec G306 -- git requires hook scripts to be executable
 				return fmt.Errorf("writing %s: %w", path, err)
 			}
 

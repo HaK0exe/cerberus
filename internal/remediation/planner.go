@@ -94,7 +94,7 @@ func (p *DefaultPlanner) Plan(ctx context.Context, credential cerberus.Credentia
 		// against a real account until account resolution is modeled
 		// and wired through.
 		Target: Target{Provider: credential.Provider, KeyFingerprint: credential.Fingerprint},
-		Risk:         assessment,
+		Risk:   assessment,
 
 		ApprovalRequired:  decision.ApprovalsRequired > 0,
 		ApprovalsRequired: decision.ApprovalsRequired,

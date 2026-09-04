@@ -39,7 +39,7 @@ func (s *NativeGitScanner) bin() string {
 }
 
 func (s *NativeGitScanner) run(ctx context.Context, dir string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, s.bin(), args...)
+	cmd := exec.CommandContext(ctx, s.bin(), args...) // #nosec G204 -- args are fixed git subcommands chosen by this package, not user input
 	cmd.Dir = dir
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -89,7 +89,7 @@ func (s *NativeGitScanner) scanWorkingTree(ctx context.Context, repo Repository)
 			if err != nil || !info.Mode().IsRegular() || info.Size() > maxFileSize {
 				continue
 			}
-			content, err := os.ReadFile(abs)
+			content, err := os.ReadFile(abs) // #nosec G304 -- abs is repo.Path joined with a path git itself reported via ls-files
 			if err != nil || looksBinary(content) {
 				continue
 			}

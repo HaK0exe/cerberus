@@ -67,17 +67,17 @@ func (d *KeyDeriver) Derive(in llm.CacheKeyInput) string {
 func writeField(h interface {
 	Write(p []byte) (int, error)
 }, tag byte, value string) {
-	h.Write([]byte{tag})
+	_, _ = h.Write([]byte{tag})
 	// Writing the length before the value prevents a boundary-shift
 	// collision between adjacent variable-length fields (e.g. "a","bc"
 	// vs "ab","c").
-	length := len(value)
+	length := uint32(len(value)) // #nosec G115 -- len() of an in-process string is never negative
 	lenBytes := []byte{
-		byte(length >> 24),
-		byte(length >> 16),
-		byte(length >> 8),
-		byte(length),
+		byte(length >> 24), // #nosec G115 -- intentional truncation to the low byte of each shifted window
+		byte(length >> 16), // #nosec G115 -- intentional truncation to the low byte of each shifted window
+		byte(length >> 8),  // #nosec G115 -- intentional truncation to the low byte of each shifted window
+		byte(length),       // #nosec G115 -- intentional truncation to the low byte of each shifted window
 	}
-	h.Write(lenBytes)
-	h.Write([]byte(value))
+	_, _ = h.Write(lenBytes)
+	_, _ = h.Write([]byte(value))
 }

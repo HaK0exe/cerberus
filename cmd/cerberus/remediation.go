@@ -77,7 +77,7 @@ func newRemediationPlanCmd(flags *globalFlags) *cobra.Command {
 
 			var r io.Reader = os.Stdin
 			if input != "" && input != "-" {
-				f, err := os.Open(input)
+				f, err := os.Open(input) // #nosec G304 -- input is a --input path supplied on the CLI command line
 				if err != nil {
 					return fmt.Errorf("opening %s: %w", input, err)
 				}
@@ -136,7 +136,7 @@ func loadRemediationPolicy(path string) (policyengine.Policy, error) {
 	if path == "" {
 		return policyengine.Policy{}, nil // zero-value Policy: NativeEngine default-denies everything
 	}
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is a --policy path supplied on the CLI command line
 	if err != nil {
 		return policyengine.Policy{}, fmt.Errorf("opening policy file %s: %w", path, err)
 	}

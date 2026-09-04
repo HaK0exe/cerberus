@@ -8,7 +8,9 @@ import (
 func TestRateLimiter_Allow_BasicBurstAndRefill(t *testing.T) {
 	rl := NewRateLimiter(1, 2)
 
-	if !rl.Allow("p1") || !rl.Allow("p1") {
+	first := rl.Allow("p1")
+	second := rl.Allow("p1")
+	if !first || !second {
 		t.Fatal("expected the first 2 calls (burst) to be allowed")
 	}
 	if rl.Allow("p1") {

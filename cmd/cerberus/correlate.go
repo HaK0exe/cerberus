@@ -45,7 +45,7 @@ func newCorrelateCmd(flags *globalFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var r io.Reader = os.Stdin
 			if input != "" && input != "-" {
-				f, err := os.Open(input)
+				f, err := os.Open(input) // #nosec G304 -- input is a --input path supplied on the CLI command line
 				if err != nil {
 					return fmt.Errorf("opening %s: %w", input, err)
 				}

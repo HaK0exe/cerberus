@@ -72,7 +72,7 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 
 			var all []cerberus.Finding
 			for _, path := range args {
-				content, err := os.ReadFile(path)
+				content, err := os.ReadFile(path) // #nosec G304 -- path is a scan target supplied on the CLI command line
 				if err != nil {
 					return fmt.Errorf("reading %s: %w", path, err)
 				}

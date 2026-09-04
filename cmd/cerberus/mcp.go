@@ -182,7 +182,7 @@ func newMCPCallCmd(flags *globalFlags) *cobra.Command {
 }
 
 func loadFindingsInto(ctx context.Context, store *findings.MemStore, path string) error {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is an operator-supplied findings file
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", path, err)
 	}
@@ -201,7 +201,7 @@ func loadFindingsInto(ctx context.Context, store *findings.MemStore, path string
 }
 
 func loadCorrelationInto(ctx context.Context, store *credentials.MemStore, path string) error {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is an operator-supplied correlation file
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", path, err)
 	}

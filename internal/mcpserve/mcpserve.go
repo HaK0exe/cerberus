@@ -238,7 +238,7 @@ func toScopes(names []string) []mcp.Scope {
 }
 
 func loadFindingsInto(ctx context.Context, store *findings.MemStore, path string) error {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is an operator-supplied findings file
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", path, err)
 	}
@@ -267,7 +267,7 @@ type correlationDoc struct {
 }
 
 func loadCorrelationInto(ctx context.Context, store *credentials.MemStore, path string) error {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is an operator-supplied correlation file
 	if err != nil {
 		return fmt.Errorf("opening %s: %w", path, err)
 	}
@@ -284,7 +284,7 @@ func loadRemediationPolicy(path string) (policyengine.Policy, error) {
 	if path == "" {
 		return policyengine.Policy{}, nil // zero-value Policy: NativeEngine default-denies everything
 	}
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- path is an operator-supplied policy file
 	if err != nil {
 		return policyengine.Policy{}, fmt.Errorf("opening policy file %s: %w", path, err)
 	}
