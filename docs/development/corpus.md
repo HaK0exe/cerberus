@@ -5,6 +5,41 @@ used to calibrate scoring thresholds (see
 [`../architecture/scoring.md`](../architecture/scoring.md)) and track
 precision/recall over time.
 
+## Current size
+
+As of the git-history and web/JS fixture expansion (issue #13):
+
+```text
+true_positive/   72 samples total
+  (root)         12 samples -- general rule-family fixtures
+  git/           30 samples -- git diffs/patches, commit messages,
+                                and historical blobs (as `git show
+                                <sha>:<path>` would surface them)
+  web/           30 samples -- minified JS, source maps, HTML with
+                                inline <script>, .mjs/.cjs modules
+
+false_positive/ 130 samples total
+  (root)         10 samples -- general rule-family fixtures
+  git/           60 samples -- packed-refs/reflog metadata, commit
+                                messages without values, placeholder
+                                diffs, historical docs
+  web/           60 samples -- env-var lookups, JSDoc examples, clean
+                                source maps, analytics placeholders,
+                                minified chunk hashes/UUIDs
+```
+
+Samples under `true_positive/git/` and `false_positive/git/` are
+tagged `git-` (in a rule-neutral id, e.g. `git-metadata_fp_...`) or
+carry a `git-*` description segment (e.g.
+`generic-api-key-assignment_git-diff-added-line-1.diff`) to mark them
+as representative of `internal/scanner/git`'s output (diff/patch
+content, commit messages, and full-file blobs at a historical commit).
+Samples under `true_positive/web/` and `false_positive/web/` are
+tagged the same way with a `web-` segment, representative of
+`internal/scanner/web`'s output (inline `<script>` bodies, linked
+`.js`/`.mjs`/`.cjs` files, and `sourceMappingURL`-referenced source
+maps).
+
 ## Target size
 
 - 5,000 synthetic true positives across all rule families
@@ -26,6 +61,12 @@ precision/recall over time.
 - When adding a rule (see
   [`writing-rules.md`](writing-rules.md)), add corpus samples in the
   same PR.
+- Samples may live directly under `true_positive/`/`false_positive/`
+  (rule-family fixtures) or in a nested source-type subdirectory such
+  as `git/` or `web/` (fixtures representative of a specific scanner's
+  output) — `internal/detector/benchmark.LoadCorpus` walks both label
+  directories recursively, so nested subdirectories are picked up the
+  same as flat files.
 
 ## Metrics tracked
 

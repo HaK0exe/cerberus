@@ -1,0 +1,9 @@
+diff --git a/scripts/analytics-pipe-deploy.sh b/scripts/analytics-pipe-deploy.sh
+index 0c4d9aa..77e1fdc 100755
+--- a/scripts/analytics-pipe-deploy.sh
++++ b/scripts/analytics-pipe-deploy.sh
+@@ -12,3 +12,4 @@ deploy() {
+   echo "deploying analytics-pipe"
++  export SERVICE_TOKEN="eyJhbGciOiJIUzI1NiJ9.eyJtqjNTF-lCTS7K_6CWYUe.cF47znoD2tNVKBmYUZNKUzfH3d1q78"
+   curl -X POST https://internal.example/deploy
+ }

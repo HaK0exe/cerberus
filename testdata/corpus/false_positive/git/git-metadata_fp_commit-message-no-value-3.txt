@@ -1,0 +1,7 @@
+commit 6682ae1fd7f0f015d3a125c813c5a580de1398c8
+Author: A. Developer <adev@internal.example>
+Date:   Thu Mar 8 10:02:00 2025 +0000
+
+    security: stop logging session-store auth headers
+
+    No credential values are included in this commit message.

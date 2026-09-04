@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "reporting-job.min.js",
+  "sources": ["../src/reporting-job/config.js"],
+  "names": ["apiKey", "config"],
+  "mappings": "AAAA,QAAQ",
+  "sourcesContent": [
+    "export const config = {\n  service: 'reporting-job',\n  apiKey: 'QDOGFtMupMhQpsyeZLDBJT7Of8JVzn',\n  retries: 3,\n};\n"
+  ]
+}

@@ -1,0 +1,7 @@
+commit 5738b2de88d3421182e8dd938694cf1135c165e9
+Author: A. Developer <adev@internal.example>
+Date:   Thu Mar 10 10:04:00 2025 +0000
+
+    Revoke leaked image-resizer deploy key and reissue via CI
+
+    No credential values are included in this commit message.

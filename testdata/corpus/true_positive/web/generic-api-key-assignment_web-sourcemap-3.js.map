@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "email-dispatcher.min.js",
+  "sources": ["../src/email-dispatcher/config.js"],
+  "names": ["apiKey", "config"],
+  "mappings": "AAAA,QAAQ",
+  "sourcesContent": [
+    "export const config = {\n  service: 'email-dispatcher',\n  apiKey: 'reFrDHWWQktzXiCQhLIEm5GQGeQcxH',\n  retries: 3,\n};\n"
+  ]
+}

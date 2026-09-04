@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+28518dbba14c2fb9f0df928372720619a1ea61e4 refs/heads/feature/search-indexer-617
+3b9a430bd3ec79e68aa29c99187a395a4a2fd64d refs/heads/feature/checkout-api-414
+38899bff595056bf3015f0263ed055674f0e82f2 refs/heads/feature/auth-gateway-311
+3a35dd0698d556076409fd57564d1af6356bfe9d refs/heads/feature/queue-consumer-505
+26f44ccbed3a3a28304b91419cc59845477f4693 refs/heads/feature/queue-consumer-486
+e7c7830fcaa2ab5f87f97e42417142f5ddcc6152 refs/heads/feature/search-indexer-6
+0eaa139b1c6d73e4629974e50c16e98130b7e11a refs/tags/v0.9.8
+0ae4c7f59e2b8e34281308db3cbdd2aeb146c2de refs/tags/v0.3.1
+11a697e41a47ea979831ed012abc0da95ceed154 refs/tags/v0.2.0

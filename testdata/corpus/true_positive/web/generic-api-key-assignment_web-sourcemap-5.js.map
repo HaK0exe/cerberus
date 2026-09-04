@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "payments-ledger.min.js",
+  "sources": ["../src/payments-ledger/config.js"],
+  "names": ["apiKey", "config"],
+  "mappings": "AAAA,QAAQ",
+  "sourcesContent": [
+    "export const config = {\n  service: 'payments-ledger',\n  apiKey: 'xp6N3zyO8ABhgDfngsp4AbM6FVcDHZ',\n  retries: 3,\n};\n"
+  ]
+}

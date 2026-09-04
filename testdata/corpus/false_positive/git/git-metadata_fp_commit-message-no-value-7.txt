@@ -1,0 +1,7 @@
+commit 32e3bdc78f79712c664a2e0f00e2bdb5c97857e1
+Author: A. Developer <adev@internal.example>
+Date:   Thu Mar 12 10:06:00 2025 +0000
+
+    fix(audit-logger): redact secret values from debug logs
+
+    No credential values are included in this commit message.

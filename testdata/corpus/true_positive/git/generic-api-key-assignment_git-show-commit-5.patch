@@ -1,0 +1,14 @@
+commit c1e8fda974f9d0eadcbf2f83fab17ed33236fcea
+Author: CI Bot <ci-bot@internal.example>
+Date:   Mon Feb 3 14:24:00 2025 +0000
+
+    Add temporary billing-worker deploy credential (TODO: move to vault)
+
+diff --git a/deploy/billing-worker.conf b/deploy/billing-worker.conf
+index 1a2b3c4..5d6e7f8 100644
+--- a/deploy/billing-worker.conf
++++ b/deploy/billing-worker.conf
+@@ -1,2 +1,3 @@
+ name = "billing-worker"
++secret = "t62jXaKONPB8kiW3Lkfy4V3HtTH4kS"
+ enabled = true

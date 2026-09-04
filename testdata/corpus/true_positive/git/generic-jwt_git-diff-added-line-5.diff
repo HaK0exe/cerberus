@@ -1,0 +1,9 @@
+diff --git a/scripts/export-service-deploy.sh b/scripts/export-service-deploy.sh
+index 0c4d9aa..77e1fdc 100755
+--- a/scripts/export-service-deploy.sh
++++ b/scripts/export-service-deploy.sh
+@@ -12,3 +12,4 @@ deploy() {
+   echo "deploying export-service"
++  export SERVICE_TOKEN="eyJhbGciOiJIUzI1NiJ9.eyJ-rVwC4JYxna_05QywxWJ.hqQgigNMXQs0QPTxs3CmLxx6DNHeTd"
+   curl -X POST https://internal.example/deploy
+ }

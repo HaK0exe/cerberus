@@ -1,0 +1,14 @@
+commit a9ca51c3ddc7e2705c8a8e5208ae097fc3b1078e
+Author: CI Bot <ci-bot@internal.example>
+Date:   Mon Feb 3 14:20:00 2025 +0000
+
+    Add temporary audit-logger deploy credential (TODO: move to vault)
+
+diff --git a/deploy/audit-logger.conf b/deploy/audit-logger.conf
+index 1a2b3c4..5d6e7f8 100644
+--- a/deploy/audit-logger.conf
++++ b/deploy/audit-logger.conf
+@@ -1,2 +1,3 @@
+ name = "audit-logger"
++secret = "sEtBv8D6nCl9hnBks3UxJn0VPTmtT8"
+ enabled = true

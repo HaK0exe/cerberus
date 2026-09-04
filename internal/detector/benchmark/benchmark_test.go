@@ -3,6 +3,7 @@ package benchmark
 import (
 	"context"
 	"math"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -174,6 +175,52 @@ func TestLoadCorpus_SyntheticLayout(t *testing.T) {
 	}
 	if tp != 2 || fp != 1 {
 		t.Errorf("tp=%d fp=%d, want tp=2 fp=1", tp, fp)
+	}
+}
+
+// TestLoadCorpus_NestedSubdirectories exercises LoadCorpus against a
+// layout with source-type subdirectories nested under true_positive/
+// and false_positive/ (e.g. "git/", "web/"), alongside a flat file at
+// the label root, mirroring how testdata/corpus groups git- and
+// web/JS-sourced fixtures without breaking the pre-existing flat
+// layout.
+func TestLoadCorpus_NestedSubdirectories(t *testing.T) {
+	fsys := fstest.MapFS{
+		"corpus/true_positive/flat.env":          &fstest.MapFile{Data: []byte("secret=abc")},
+		"corpus/true_positive/git/one.diff":      &fstest.MapFile{Data: []byte("+secret=abc")},
+		"corpus/true_positive/web/one.js":        &fstest.MapFile{Data: []byte("var k='abc'")},
+		"corpus/false_positive/flat.txt":         &fstest.MapFile{Data: []byte("no secret here")},
+		"corpus/false_positive/git/one.txt":      &fstest.MapFile{Data: []byte("no secret here")},
+		"corpus/false_positive/web/.hidden.js":   &fstest.MapFile{Data: []byte("ignored")},
+		"corpus/false_positive/web/.hiddendir/x": &fstest.MapFile{Data: []byte("ignored")},
+	}
+
+	samples, err := LoadCorpus(fsys, "corpus")
+	if err != nil {
+		t.Fatalf("LoadCorpus: %v", err)
+	}
+	if len(samples) != 5 {
+		t.Fatalf("len(samples) = %d, want 5 (dotfile and dot-directory contents must be excluded)", len(samples))
+	}
+
+	paths := map[string]bool{}
+	for _, s := range samples {
+		paths[s.Path] = true
+		if s.Artifact.Path != s.Path || s.Artifact.ID != s.Path {
+			t.Errorf("sample %s: Artifact.Path/ID must mirror Path", s.Path)
+		}
+	}
+	wantPaths := []string{
+		filepath.Join("true_positive", "flat.env"),
+		filepath.Join("true_positive", "git", "one.diff"),
+		filepath.Join("true_positive", "web", "one.js"),
+		filepath.Join("false_positive", "flat.txt"),
+		filepath.Join("false_positive", "git", "one.txt"),
+	}
+	for _, want := range wantPaths {
+		if !paths[want] {
+			t.Errorf("expected sample path %q to be loaded, samples: %v", want, paths)
+		}
 	}
 }
 

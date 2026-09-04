@@ -1,0 +1,7 @@
+commit a2212c10dce90587f10e00a7ebcc2b88093576ff
+Author: A. Developer <adev@internal.example>
+Date:   Thu Mar 7 10:01:00 2025 +0000
+
+    Remove hardcoded API token from analytics-pipe config
+
+    No credential values are included in this commit message.

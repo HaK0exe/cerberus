@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+431ca8a5f585c40fc7dec54f4e9fe78dd5f24d05 refs/heads/feature/billing-worker-877
+5dfa009ba41197bf4fd3b1ee445599927f333ee4 refs/heads/feature/notifications-svc-389
+775de9e74106c5065e04f5cc20eca62bf3f5f576 refs/heads/feature/checkout-api-464
+d31ef0f55b791d3ce4bb8e85e63dc841bf4e95d3 refs/heads/feature/search-indexer-822
+f6a9276e0311221dd26e82852f2116ac93be7f97 refs/heads/feature/rate-limiter-612
+0fc8ee527cc37ab89c0a3e15a4479a13463b543f refs/heads/feature/audit-logger-257
+ba274f9a50f996155b7a61f73c1521569f4b0575 refs/tags/v0.2.0
+23f6d49734375598d5b4e7f3c04c9462ff0ae93c refs/tags/v0.3.0
+7c646d5ee2b2e6f549cd71bd99895000a0bfef01 refs/tags/v0.8.1

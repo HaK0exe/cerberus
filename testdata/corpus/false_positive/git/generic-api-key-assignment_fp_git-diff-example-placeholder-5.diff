@@ -1,0 +1,9 @@
+diff --git a/examples/checkout-api.env.example b/examples/checkout-api.env.example
+index 2b4c6de..9f1a0bb 100644
+--- a/examples/checkout-api.env.example
++++ b/examples/checkout-api.env.example
+@@ -1,3 +1,4 @@
+ service = "checkout-api"
++api_key = "your_api_key_here"
+ token = "placeholder"
+ password = "changeme"

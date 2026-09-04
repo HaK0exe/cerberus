@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "inventory-sync.min.js",
+  "sources": ["../src/inventory-sync/index.js"],
+  "names": ["render", "mount"],
+  "mappings": "AAAA,QAAQ",
+  "sourcesContent": [
+    "export function render(state) {\n  return `<div>${state.title}</div>`;\n}\nexport function mount(el) {\n  el.innerHTML = render({ title: 'inventory-sync' });\n}\n"
+  ]
+}

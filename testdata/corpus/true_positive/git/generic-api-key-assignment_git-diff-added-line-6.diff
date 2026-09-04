@@ -1,0 +1,9 @@
+diff --git a/config/auth-gateway.env b/config/auth-gateway.env
+index 3a12f9c..8e21ab4 100644
+--- a/config/auth-gateway.env
++++ b/config/auth-gateway.env
+@@ -1,3 +1,4 @@
+ service = "auth-gateway"
+ region = "us-east-1"
++api_key = "WvjzkpQQEtI8D5KU0FMc8i1Q4DjJ"
+ timeout = 30

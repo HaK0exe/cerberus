@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "feature-flags.min.js",
+  "sources": ["../src/feature-flags/config.js"],
+  "names": ["apiKey", "config"],
+  "mappings": "AAAA,QAAQ",
+  "sourcesContent": [
+    "export const config = {\n  service: 'feature-flags',\n  apiKey: '57duWjD8bp35DxIyOtCdoUDwkHZ1Iq',\n  retries: 3,\n};\n"
+  ]
+}

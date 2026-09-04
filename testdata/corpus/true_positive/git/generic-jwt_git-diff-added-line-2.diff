@@ -1,0 +1,9 @@
+diff --git a/scripts/session-store-deploy.sh b/scripts/session-store-deploy.sh
+index 0c4d9aa..77e1fdc 100755
+--- a/scripts/session-store-deploy.sh
++++ b/scripts/session-store-deploy.sh
+@@ -12,3 +12,4 @@ deploy() {
+   echo "deploying session-store"
++  export SERVICE_TOKEN="eyJhbGciOiJIUzI1NiJ9.eyJYJJIRuiwDAfHOyjkTA1m._vEpBHLGv31y8WB-XYJ2YLU1cKcX3C"
+   curl -X POST https://internal.example/deploy
+ }
