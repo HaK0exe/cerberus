@@ -25,3 +25,44 @@ project adheres to [Semantic Versioning](https://semver.org/).
   into the CLI and detection pipeline (#1, #2, #4).
 - `--format sarif` for `scan file` and `git scan`, producing valid
   SARIF 2.1.0 output with no raw secret values (#4).
+- `cerberus web scan`: colly-based web crawler wired into the CLI and
+  detection pipeline, replacing the `internal/scanner/web` stub (#6).
+- `internal/scanner/web/ssrf`: mandatory SSRF guard — DNS resolution
+  and IP validation before every request, re-validated on every
+  redirect hop via dial-time IP pinning, blocking RFC1918/loopback/
+  link-local ranges and `169.254.169.254` (never allow-listable) per
+  `docs/security/ssrf.md` (#5).
+- `robots.txt` handling: respected by default, fail-open on fetch
+  failure, `--ignore-robots` opt-in with the required warning (#7).
+- Crawl scope enforcement (`--allowed-domains`, `--exclude-path`)
+  checked on every discovered link and on every redirect hop, not
+  just the start URL (#8).
+- JavaScript extraction: inline `<script>` content, linked
+  `.js`/`.mjs`/`.cjs` files, and `sourceMappingURL`-referenced source
+  maps, downloaded through the SSRF-guarded client with a hard size
+  cap; disabled entirely by `--javascript=false` (#9).
+- `internal/scanner/web/frontier`: distributed crawl frontier —
+  `scan_id`/`url`/`depth` message format over `cerberus.JobQueue`,
+  URL canonicalization (scheme/host case, default ports, trailing
+  slash, query-parameter order), and a `SHA256(canonical URL)` dedup
+  layer so multiple workers sharing a queue never re-fetch the same
+  page. Backed by `internal/queue.MemQueue` for now; the interface is
+  the drop-in point for an SQS-backed queue once that lands (#11).
+- Dedicated web-scanner security test suite covering every case in
+  `docs/security/ssrf.md`'s required-tests list end-to-end through the
+  crawler: direct SSRF, redirect-chain SSRF, DNS rebinding, the
+  metadata endpoint, oversized/decompression-bomb-style bodies, and
+  both redirect-loop and unbounded-page-graph crawl termination (#12).
+
+### Deviations from the original issue scope
+
+- S2-11 was scoped as an "SQS frontier"; SQS support itself is S2-10,
+  which has not landed yet. `internal/scanner/web/frontier` implements
+  the full message schema, canonicalization, and dedup semantics S2-11
+  requires against `cerberus.JobQueue`/`internal/queue.MemQueue`
+  instead, so it drops in against a real SQS-backed `JobQueue` with no
+  interface changes once S2-10 exists. The single-process
+  `cerberus web scan` CLI path does not (yet) drive multiple worker
+  processes off this frontier — that requires a `cerberus web worker`
+  command, deliberately left for when S2-10 lands. See the comment on
+  issue #11 for the same note.
