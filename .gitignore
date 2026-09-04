@@ -24,3 +24,6 @@ deploy/terraform/**/*.tfvars
 
 # OS
 .DS_Store
+
+# Claude Code agent worktrees (local, per-session — never repo content)
+.claude/worktrees/
