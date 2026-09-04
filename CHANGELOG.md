@@ -53,6 +53,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   crawler: direct SSRF, redirect-chain SSRF, DNS rebinding, the
   metadata endpoint, oversized/decompression-bomb-style bodies, and
   both redirect-loop and unbounded-page-graph crawl termination (#12).
+- `internal/queue/sqs`: `cerberus.JobQueue` implementation against AWS
+  SQS (or any SQS-compatible endpoint, e.g. ElasticMQ), with a 256KiB
+  message-size limit enforced (and documented) in `Publish`, and a
+  `Consume` long-poll loop that exits cleanly — channel closed, no
+  goroutine left running — as soon as its context is done. No AWS
+  credentials or client construction inside `pkg/cerberus`; callers
+  supply their own `*sqs.Client`. Round-trip and cancellation behavior
+  is covered both by fake-API unit tests and by an integration test
+  against a real, locally-started ElasticMQ container (skipped, not
+  failed, when Docker isn't available) (#10).
 
 ### Deviations from the original issue scope
 
