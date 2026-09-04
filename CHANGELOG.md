@@ -72,6 +72,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   local/CLI use. The plain `llm.Cache` interface is the drop-in point
   for a future DynamoDB-backed (`cerberus-cache` table) implementation,
   Sprint 4 (#19).
+- `internal/llm.Sanitize`: real context-sanitizer implementation
+  replacing the Sprint 0 no-op placeholder — redacts the raw candidate
+  secret value with a fixed-width placeholder (no length/position
+  leak) and neutralizes prompt-injection-shaped text (instruction
+  overrides, role-play jailbreaks, chat control-token smuggling,
+  fabricated `ValidationResult`-shaped JSON) before context ever
+  reaches a Validator, per ADR-0002 (#17).
 
 ### Deviations from the original issue scope
 

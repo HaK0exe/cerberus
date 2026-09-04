@@ -14,11 +14,13 @@ import "context"
 // Sanitize strips a candidate's raw secret value from freeform context
 // text before it is ever sent to a Validator, replacing it with a
 // fixed-width placeholder so length/positioning artifacts don't leak
-// exploitable information either.
+// exploitable information either. It also neutralizes text shaped like a
+// prompt-injection attempt (e.g. "ignore previous instructions...") found
+// in the scanned artifact, so a Validator never treats attacker-controlled
+// content as an instruction. See sanitize.go for the implementation and
+// docs/architecture/llm-non-sovereign.md for the invariant this enforces.
 func Sanitize(context string, secretValue []byte) string {
-	// Placeholder implementation for the scaffold: Sprint 3 replaces
-	// this with a proper tokenizer-aware redaction pass.
-	return context
+	return sanitizeContext(context, secretValue)
 }
 
 // CacheKeyInput is hashed (HMAC, never a bare SHA256 — see
