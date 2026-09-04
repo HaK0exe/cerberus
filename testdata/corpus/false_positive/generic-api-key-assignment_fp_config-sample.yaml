@@ -1,0 +1,4 @@
+# sample-config.yaml -- local dev only, copy to config.yaml and edit
+service:
+  name: billing-worker
+  token: "k7Lp0Vb3Nc6Ht9Ws1Fg4Ae8Dj2Rk5YQx"
