@@ -1,0 +1,2 @@
+Internal service token for the billing worker (rotate on deploy):
+eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyIjoic3ZjLWJpbGxpbmciLCJpYXQiOjE3MjAwMDAwMDB9.k3f9DmZ2Qy8Lp0Vb7Nc4Ht1Ws5Fg0Ae9Dj2Rk7YQx

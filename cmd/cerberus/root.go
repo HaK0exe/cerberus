@@ -43,6 +43,7 @@ func newRootCmd() *cobra.Command {
 		newRemediationCmd(flags),
 		newServerCmd(flags),
 		newMCPCmd(flags),
+		newBenchmarkCmd(flags),
 	)
 
 	return root

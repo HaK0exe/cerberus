@@ -1,0 +1,2 @@
+Auth token embedded in the CI deploy script for internal service-to-service calls:
+eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjaS1kZXBsb3kiLCJyb2xlIjoic2VydmljZSJ9.aZ8xQ2mK9pL0vB3nR6tY1wF5gH7jD4sC

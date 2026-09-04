@@ -138,6 +138,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   a candidate other than the one it was called for, and can never push
   a `llm_review`-band score out of `[ThresholdLLMReview,
   ThresholdFinding)` regardless of classification/confidence (#22).
+- `internal/detector/benchmark` and `cerberus benchmark corpus`: the
+  LLM quality-gate harness — loads `testdata/corpus`'s labeled
+  true/false-positive samples, runs them through a `detector.Detector`
+  with and (once `--llm` has a real Ollama/llama.cpp server to reach)
+  without the Sprint 3 LLM review stage, and reports precision/recall/
+  F1 per ROADMAP.md's quality-gate rule. See
+  `docs/architecture/llm-quality-gate.md` for the baseline measurement
+  and the resulting default-on/off decision (#23).
 
 ### Deviations from the original issue scope
 
@@ -151,3 +159,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   processes off this frontier — that requires a `cerberus web worker`
   command, deliberately left for when S2-10 lands. See the comment on
   issue #11 for the same note.
+- S3-10 (#23) asks for the corpus run "with and without" the LLM
+  stage. This sandbox has no Ollama/llama.cpp server available, so
+  only the "without" (baseline) measurement is real here; the harness
+  and `--llm` flag needed to complete the "with" side are in place and
+  documented in `docs/architecture/llm-quality-gate.md`'s "What's
+  missing" section, but no LLM-assisted numbers are reported —
+  fabricating them was explicitly out of bounds for this change. See
+  the comment on issue #23 for the same note.

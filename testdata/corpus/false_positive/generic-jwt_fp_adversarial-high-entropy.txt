@@ -1,0 +1,2 @@
+Internal metrics dashboard embed reference (not sensitive):
+eyJhbGciOiJIUzI1NiJ9.eyJkYXNoYm9hcmQiOiJyZXZlbnVlIiwidmlldyI6InB1YmxpYyJ9.n5X2vQ8mK1pL7wB4nR0tY6gH3jD9sC2e

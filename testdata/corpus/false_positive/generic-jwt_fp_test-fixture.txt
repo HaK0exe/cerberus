@@ -1,0 +1,2 @@
+// Unit test fixture: mock bearer token used by the auth middleware tests
+const mockToken = "eyJhbGciOiJIUzI1NiJ9.eyJtb2NrIjp0cnVlLCJ1c2VyIjoidGVzdC11c2VyIn0.b2xkRmFrZVNpZ25hdHVyZVZhbHVlSGVyZTEyMw";
