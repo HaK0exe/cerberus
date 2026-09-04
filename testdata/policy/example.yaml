@@ -1,0 +1,16 @@
+remediation:
+  - provider: aws
+    environment: production
+    automatic: false
+    approvals_required: 2
+  - provider: aws
+    environment: development
+    automatic: true
+
+mcp:
+  allow:
+    - findings:read
+    - scans:read
+
+scan:
+  obey_robots_txt: true

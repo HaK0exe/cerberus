@@ -1,32 +1,55 @@
-# Terraform (planned — Sprint 4)
+# Terraform
 
-This directory will hold the AWS deployment IaC:
+See [docs/deployment/cloud.md](../../docs/deployment/cloud.md) for the
+full CLOUD profile plan and what's implemented vs. still planned.
+
+## Implemented today
 
 ```text
 deploy/terraform/
 ├── modules/
-│   ├── api-gateway/
-│   ├── lambda/
-│   ├── sqs/
-│   ├── dynamodb/
-│   ├── kms/
-│   ├── ecs-fargate/
 │   └── iam/            # CerberusAPIRole, CerberusWebScannerRole,
 │                        # CerberusGitScannerRole, CerberusFindingWriterRole,
 │                        # CerberusRemediationPlannerRole,
 │                        # CerberusRemediationExecutorRole, CerberusAuditRole
 └── environments/
-    ├── dev/
-    └── prod/
+    └── dev/             # calls modules/iam only
 ```
 
-Key constraints these modules must satisfy (see
+The `iam` module is the first concrete enforcement of
+[ADR-0003](../../docs/adr/0003-remediation-separation.md)'s
+scanner-never-remediates rule at the infrastructure layer: each role is
+separate, scanner roles carry zero IAM/cloud-mutating permissions, and
+`CerberusRemediationExecutorRole` gets only `iam:UpdateAccessKey` +
+`iam:ListAccessKeys`, plus an explicit `Deny` on
+delete/create-identity actions. See
+[docs/adr/0011-deployment-profiles.md](../../docs/adr/0011-deployment-profiles.md)
+for the full reasoning and its limits (Terraform can't runtime-assert
+"this role can never gain a permission later" the way
+`internal/architecture`'s Go boundary test does — that's a process/review
+guarantee here, not an automated one).
+
+Validate with `terraform fmt -check` and, network permitting,
+`terraform validate` from `environments/dev/`.
+
+## Still planned (not in this repo yet)
+
+```text
+modules/
+├── api-gateway/
+├── lambda/
+├── sqs/
+├── dynamodb/
+├── kms/
+└── ecs-fargate/
+environments/
+└── prod/
+```
+
+Key constraints these modules must satisfy when they're built (see
 [ADR-0003](../../docs/adr/0003-remediation-separation.md) and
 [`../../docs/architecture/overview.md`](../../docs/architecture/overview.md)):
 
-- `scanner != remediator`: no IAM role used by a scanner/worker may
-  carry any permission granted to
-  `CerberusRemediationPlannerRole`/`CerberusRemediationExecutorRole`.
 - Separate KMS keys per concern: `alias/cerberus-data`,
   `alias/cerberus-audit`, `alias/cerberus-temporary-secrets` — not one
   universal key.
@@ -34,6 +57,12 @@ Key constraints these modules must satisfy (see
   Object Lock optional for the audit archive.
 - DynamoDB tables: `cerberus-scans`, `cerberus-findings`,
   `cerberus-remediations`, `cerberus-audit`, `cerberus-cache`.
+- Per the spec: don't force the wrong compute model — Chromium-based
+  web scanning and Git-history scanning belong on Fargate, not crammed
+  into Lambda; the API layer is the Lambda-appropriate piece.
 
-Nothing is implemented here yet — see the "Sprint 4 — Cloud control
-plane & MCP" milestone in the issue tracker.
+Nothing beyond the `iam` module is implemented here yet — the
+`cerberus-api`/`cerberus-worker`/`cerberus-mcp` Go binaries are still
+Sprint 4 stubs (see `deploy/docker/*.Dockerfile`), so standing up
+Lambda/Fargate/API Gateway ahead of them would be untestable
+infrastructure for code that doesn't exist yet.

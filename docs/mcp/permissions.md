@@ -1,11 +1,15 @@
 # MCP permissions
 
-**Status: planned for Sprint 4** (`internal/mcp`, `cmd/cerberus-mcp`).
+**Status: implemented** (`internal/mcp`, `internal/mcpserve`,
+`cmd/cerberus-mcp`, `cerberus mcp`). See [tools.md](tools.md) for the
+full per-tool reference.
 
 ## Scopes
 
 ```text
 findings:read
+credentials:read
+incidents:read
 scans:read
 scans:start
 scans:cancel
@@ -14,6 +18,8 @@ remediation:read
 remediation:request
 remediation:execute
 ```
+
+`remediation:read` is defined but not yet required by any tool.
 
 ## Default grant
 
@@ -28,19 +34,31 @@ No destructive or mutating capability is granted by default.
 
 ## Tools
 
-Read/plan tools (require the scopes above):
+Read-only tools:
 
 ```text
 cerberus_list_findings
 cerberus_get_finding
-cerberus_start_scan
+cerberus_explain_finding
+cerberus_list_credentials
+cerberus_get_credential
+cerberus_list_incidents
+cerberus_get_incident
 cerberus_get_scan
-cerberus_cancel_scan
-cerberus_request_remediation
-cerberus_get_remediation
 ```
 
-Destructive tool, isolated on purpose (`remediation:execute` only):
+Mutating tools, not wired to a real backing store yet — each returns
+an honest "not available" error rather than a fabricated result (see
+[tools.md](tools.md)):
+
+```text
+cerberus_start_scan
+cerberus_cancel_scan
+cerberus_request_remediation
+```
+
+Destructive tool, isolated on purpose (`remediation:execute` only),
+also not wired to a privileged executor yet:
 
 ```text
 cerberus_execute_remediation

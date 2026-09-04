@@ -1,0 +1,122 @@
+# Cerberus TEAM profile — see docs/deployment/team.md for the full
+# picture. Read that file before running this: as of this writing,
+# `cerberus-api`, `cerberus-worker`, and `cerberus-mcp` (cmd/cerberus-api,
+# cmd/cerberus-worker, cmd/cerberus-mcp) are Sprint 4 stub binaries that
+# print a message and os.Exit(1) immediately — they build and the
+# containers below will start, but the process inside exits right away.
+# `postgres` is provisioned here but internal/storage has no
+# DynamoDB/Postgres/SQLite implementation yet, so nothing in this repo
+# writes to it today. This compose file exists to have the intended
+# topology, networking, and volumes ready ahead of that Sprint 4 work
+# landing — see docs/deployment/team.md for exactly what does and
+# doesn't work if you run `docker compose up` today.
+#
+# What DOES work today: `postgres` and `ollama` start and are usable
+# standalone (e.g. exercise Ollama directly per docs/deployment/local.md
+# while this compose file's other services catch up).
+#
+# Env vars referenced below (see docker-compose.env.example) are NOT
+# read by any Go binary in this repo yet — internal/config has no
+# env-var/viper wiring as of this file (grep for os.Getenv/viper. in
+# internal/ and cmd/ to confirm before relying on this). They are
+# plumbed through at the infrastructure level as the intended interface
+# for when that wiring lands.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CERBERUS_DB_NAME:-cerberus}
+      POSTGRES_USER: ${CERBERUS_DB_USER:-cerberus}
+      POSTGRES_PASSWORD: ${CERBERUS_DB_PASSWORD:?set CERBERUS_DB_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CERBERUS_DB_USER:-cerberus}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [cerberus-internal]
+
+  # Local LLM backend for the optional Validator stage (internal/llm/ollama)
+  # — never required, per docs/architecture/llm-non-sovereign.md: every
+  # service below must keep working with OLLAMA disabled/unreachable.
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-data:/root/.ollama
+    networks: [cerberus-internal]
+
+  # STUB BINARY — see the file-level comment above. Builds and starts;
+  # the process inside exits immediately today.
+  cerberus-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/cerberus-api.Dockerfile
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file: [.env]
+    environment:
+      CERBERUS_DB_DSN: postgresql://${CERBERUS_DB_USER:-cerberus}:${CERBERUS_DB_PASSWORD}@postgres:5432/${CERBERUS_DB_NAME:-cerberus}?sslmode=disable
+      CERBERUS_FINGERPRINT_KEY: ${CERBERUS_FINGERPRINT_KEY:?set CERBERUS_FINGERPRINT_KEY in .env}
+      CERBERUS_POLICY_PATH: /etc/cerberus/policy.yaml
+      CERBERUS_OLLAMA_ENDPOINT: http://ollama:11434
+    volumes:
+      - ./policy.yaml:/etc/cerberus/policy.yaml:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [cerberus-internal]
+
+  # STUB BINARY — see the file-level comment above.
+  cerberus-worker:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/cerberus-worker.Dockerfile
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file: [.env]
+    environment:
+      CERBERUS_DB_DSN: postgresql://${CERBERUS_DB_USER:-cerberus}:${CERBERUS_DB_PASSWORD}@postgres:5432/${CERBERUS_DB_NAME:-cerberus}?sslmode=disable
+      CERBERUS_FINGERPRINT_KEY: ${CERBERUS_FINGERPRINT_KEY:?set CERBERUS_FINGERPRINT_KEY in .env}
+      CERBERUS_POLICY_PATH: /etc/cerberus/policy.yaml
+      CERBERUS_OLLAMA_ENDPOINT: http://ollama:11434
+    volumes:
+      - ./policy.yaml:/etc/cerberus/policy.yaml:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [cerberus-internal]
+
+  # STUB BINARY — see the file-level comment above. internal/mcp's tool
+  # pipeline (Server.Dispatch) is real and tested; no stdio/HTTP
+  # transport is wired to cmd/cerberus-mcp yet (docs/adr/0009-mcp-v2.md).
+  cerberus-mcp:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/cerberus-mcp.Dockerfile
+    restart: "no"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file: [.env]
+    environment:
+      CERBERUS_DB_DSN: postgresql://${CERBERUS_DB_USER:-cerberus}:${CERBERUS_DB_PASSWORD}@postgres:5432/${CERBERUS_DB_NAME:-cerberus}?sslmode=disable
+      CERBERUS_POLICY_PATH: /etc/cerberus/policy.yaml
+    volumes:
+      - ./policy.yaml:/etc/cerberus/policy.yaml:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [cerberus-internal]
+
+networks:
+  cerberus-internal:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  ollama-data:

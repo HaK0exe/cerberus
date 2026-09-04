@@ -17,7 +17,7 @@ func TestRobotsCache_DisallowedPathBlocked(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := newRobotsCache(srv.Client(), nil)
+	c := newRobotsCache(srv.Client(), "", nil)
 	base, _ := url.Parse(srv.URL)
 
 	allowed, _ := url.Parse(base.String() + "/public")
@@ -38,7 +38,7 @@ func TestRobotsCache_FetchFailure_FailsOpen(t *testing.T) {
 	defer srv.Close()
 
 	var warned bool
-	c := newRobotsCache(srv.Client(), func(string, ...any) { warned = true })
+	c := newRobotsCache(srv.Client(), "", func(string, ...any) { warned = true })
 	u, _ := url.Parse(srv.URL + "/anything")
 
 	if !c.allowed(u) {
@@ -55,7 +55,7 @@ func TestRobotsCache_Missing404_Allowed(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := newRobotsCache(srv.Client(), nil)
+	c := newRobotsCache(srv.Client(), "", nil)
 	u, _ := url.Parse(srv.URL + "/page")
 	if !c.allowed(u) {
 		t.Fatal("expected missing robots.txt (404) to allow all paths")
@@ -74,7 +74,7 @@ func TestRobotsCache_CachedPerHost(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := newRobotsCache(srv.Client(), nil)
+	c := newRobotsCache(srv.Client(), "", nil)
 	u1, _ := url.Parse(srv.URL + "/a")
 	u2, _ := url.Parse(srv.URL + "/b")
 	c.allowed(u1)

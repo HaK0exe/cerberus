@@ -73,3 +73,34 @@ jobs:
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - run: govulncheck ./...
+
+  secret-scan:
+    name: Secret scan (dogfood)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Build cerberus
+        run: go build -o bin/cerberus ./cmd/cerberus
+
+      # testdata/corpus and *_test.go fixtures deliberately contain
+      # true-positive-shaped values used to calibrate/exercise
+      # detection (see testdata/corpus/true_positive,
+      # internal/llm/sanitize_test.go, etc.) — scanning them would just
+      # be cerberus flagging its own test data, not a real leak.
+      - name: Scan tracked files (fails the job on high/critical findings)
+        run: |
+          git ls-files -- . ':!testdata' ':!**/*_test.go' \
+            | xargs -r ./bin/cerberus --quiet scan file --format sarif --fail-on high \
+            > results.sarif
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

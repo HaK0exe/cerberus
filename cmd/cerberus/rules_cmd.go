@@ -65,7 +65,7 @@ func newRulesCmd(flags *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return renderFindings(flags.format, findings)
+			return renderFindings(flags.UI(), flags.format, findings)
 		},
 	})
 

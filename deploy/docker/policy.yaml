@@ -1,0 +1,28 @@
+# Default policy for the TEAM (docker-compose) profile — internal/policyengine's
+# native YAML schema (see internal/policyengine/native.go and
+# testdata/policy/example.yaml, which this mirrors). NativeEngine
+# default-denies anything not listed here, so a service reading this
+# file safely does nothing until an operator deliberately allows it.
+#
+# NOTE: as of this file, no Go binary actually reads CERBERUS_POLICY_PATH
+# yet — see docker-compose.yml's file-level comment. This file documents
+# the intended config once that wiring lands.
+
+remediation:
+  - provider: aws
+    environment: production
+    automatic: false
+    approvals_required: 2
+  - provider: aws
+    environment: development
+    automatic: true
+
+mcp:
+  allow:
+    - findings:read
+    - credentials:read
+    - incidents:read
+    - scans:read
+
+scan:
+  obey_robots_txt: true

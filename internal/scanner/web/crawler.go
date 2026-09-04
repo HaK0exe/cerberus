@@ -109,14 +109,21 @@ func (cr *Crawler) Scan(ctx context.Context, target string, opts cerberus.ScanOp
 		return nil
 	})
 
+	userAgent := opts.UserAgent
+	if userAgent == "" {
+		userAgent = defaultUserAgent
+	}
+	lowProfile := opts.LowProfile
+
 	var robots *robotsCache
 	if opts.RespectRobots {
-		robots = newRobotsCache(client, cr.warnf)
+		robots = newRobotsCache(client, userAgent, cr.warnf)
 	}
 
 	c := colly.NewCollector(
 		colly.MaxDepth(depth),
 		colly.Async(true),
+		colly.UserAgent(userAgent),
 	)
 	c.IgnoreRobotsTxt = true // we enforce robots.txt ourselves (S2-07), with fail-open semantics colly doesn't offer
 	c.MaxBodySize = maxBodyBytes
@@ -125,6 +132,7 @@ func (cr *Crawler) Scan(ctx context.Context, target string, opts cerberus.ScanOp
 		DomainGlob:  "*",
 		Parallelism: concurrency,
 		Delay:       time.Duration(float64(time.Second) / rateLimit),
+		RandomDelay: time.Duration(opts.Jitter * float64(time.Second)),
 	}); err != nil {
 		return nil, fmt.Errorf("web scanner: configuring rate limit: %w", err)
 	}
@@ -175,6 +183,10 @@ func (cr *Crawler) Scan(ctx context.Context, target string, opts cerberus.ScanOp
 		if err != nil {
 			return
 		}
+		req.Header.Set("User-Agent", userAgent)
+		if lowProfile {
+			NinjaHeaders(req)
+		}
 		resp, err := client.Do(req)
 		if err != nil {
 			cr.warnf("web scanner: fetching %s: %v", redactedURL(target), err)
@@ -215,6 +227,14 @@ func (cr *Crawler) Scan(ctx context.Context, target string, opts cerberus.ScanOp
 		if robots != nil && !robots.allowed(r.URL) {
 			r.Abort()
 			return
+		}
+		if lowProfile && r.Headers != nil {
+			// Reuse the shared browser-header policy (Accept,
+			// Accept-Language, intra-site Referer only). User-Agent
+			// itself is already pinned per-run via colly.UserAgent.
+			tmp := &http.Request{Method: http.MethodGet, URL: r.URL, Header: *r.Headers}
+			NinjaHeaders(tmp)
+			*r.Headers = tmp.Header
 		}
 	})
 

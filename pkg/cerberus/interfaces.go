@@ -54,6 +54,19 @@ type ScanOptions struct {
 	RespectRobots  bool
 	ScanJavaScript bool
 
+	// UserAgent overrides the crawler's default self-identifying UA
+	// ("CerberusBot"). Empty means use the default. An explicit,
+	// per-run opt-in for engagements that need a different UA string.
+	UserAgent string
+	// Jitter adds up to this many extra seconds of random delay
+	// between requests, on top of RateLimit's fixed delay, to avoid a
+	// perfectly regular request cadence. Zero means no jitter.
+	Jitter float64
+	// LowProfile enables browser-like request headers and marks the
+	// run as a low-and-slow engagement. It never weakens safety
+	// enforcement (SSRF guard, scope). Set by --ninja.
+	LowProfile bool
+
 	History bool
 	Staged  bool
 	Branch  string

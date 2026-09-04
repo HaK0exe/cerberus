@@ -2,6 +2,7 @@ package llm
 
 import (
 	"encoding/base64"
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -152,9 +153,9 @@ func neutralizeInjections(context string) string {
 // of them buys little while adding false-positive surface; injection
 // payloads worth hiding in base64 are, in practice, at least a short
 // sentence once decoded.
-var base64TokenPattern = regexp.MustCompile(`[A-Za-z0-9+/]{16,}={0,2}`)
-
 const minBase64TokenLen = 16
+
+var base64TokenPattern = regexp.MustCompile(fmt.Sprintf(`[A-Za-z0-9+/]{%d,}={0,2}`, minBase64TokenLen))
 
 // neutralizeEncodedBase64 replaces base64-shaped tokens whose DECODED
 // content matches an injectionPatterns entry with injectionPlaceholder,
