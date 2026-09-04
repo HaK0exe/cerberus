@@ -1,5 +1,9 @@
 /bin/
 /dist/
+/cerberus
+/cerberus-api
+/cerberus-mcp
+/cerberus-worker
 *.test
 *.out
 .env
