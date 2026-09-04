@@ -103,6 +103,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   of a blocking error, so callers can fall back to the pre-LLM
   deterministic score. State transitions are logged and exposed via
   `Breaker.State()`/`Breaker.Stats()` for operators (#20).
+- `internal/llm/llamacpp`: second `cerberus.Validator` implementation,
+  against a llama.cpp server's OpenAI-compatible `/v1/chat/completions`
+  HTTP endpoint, selectable as a fallback when Ollama is unavailable.
+  Renders prompts via `internal/llm/prompt`, parses responses through
+  `internal/llm.ParseValidationResultWithRetry` (no bespoke JSON
+  parsing), and depends on an injectable `HTTPClient` interface so
+  unit tests run against an `httptest` fake server (success, HTTP
+  errors, malformed/retried JSON, context cancellation) with no real
+  llama.cpp server required. Base URL and model are required
+  `Config` fields, never hardcoded (#15).
 
 ### Deviations from the original issue scope
 
