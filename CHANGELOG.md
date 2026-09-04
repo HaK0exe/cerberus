@@ -127,6 +127,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `errors.Is`. Base URL, model name, per-call timeout, and retry count
   are all configurable, with no network call ever made from
   `pkg/cerberus` (#14).
+- `testdata/corpus/prompt-injection`: adversarial corpus covering
+  direct instruction override, role-play jailbreak, encoded/obfuscated
+  instructions (base64, ROT13, Unicode homoglyphs), and injected fake
+  JSON `ValidationResult` output, plus
+  `internal/detector/injection_test.go` driving every sample through
+  the real `Detect` pipeline against a deliberately "obedient" fake
+  Validator to prove ADR-0002's llm-non-sovereign invariants hold
+  structurally: a Validator can never fabricate or erase a Finding for
+  a candidate other than the one it was called for, and can never push
+  a `llm_review`-band score out of `[ThresholdLLMReview,
+  ThresholdFinding)` regardless of classification/confidence (#22).
 
 ### Deviations from the original issue scope
 
