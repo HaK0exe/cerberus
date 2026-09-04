@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+bde81c6c4eee6fffabf195429c9a34847af77d9b refs/heads/feature/checkout-api-481
+9f9c1b841e3cdf523d2fc7c2eb7041c77dbef463 refs/heads/feature/config-sync-969
+26ff73859c8cf3e62b9bf4c7ce4938c32a016efb refs/heads/feature/reporting-job-321
+09279878ec25fa6a68377b0ddda198b9758ae838 refs/heads/feature/reporting-job-183
+45495d450d84eaeef97817a7b102a05070883603 refs/heads/feature/billing-worker-32
+ae70ab6ba2f2ed83b367a67ebfb7cddb15672f2b refs/heads/feature/image-resizer-612
+f5edc889373f75c7b248e0e68ea17df9f59c4ee6 refs/tags/v0.3.9
+ff7a9ff86e2eacf508e12f4b2d24a93aa3870f5c refs/tags/v0.5.3
+74a83aad72f2a143422cf8ccb8dbf08ccc2c9307 refs/tags/v0.7.5

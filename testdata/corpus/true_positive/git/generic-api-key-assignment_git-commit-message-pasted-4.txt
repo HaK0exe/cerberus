@@ -1,0 +1,10 @@
+commit 6e154ae7123154cab37edd9c57a4b8696a4aed27
+Author: A. Developer <adev@internal.example>
+Date:   Wed Jan 11 09:13:00 2025 +0000
+
+    Debugging search-indexer auth failures, pasted the token we used below for the
+    on-call thread:
+
+    api_key = "zXgA65bDYlDY6OpbUphQyiQU"
+
+    Remove before merging (forgot, caught in code review).

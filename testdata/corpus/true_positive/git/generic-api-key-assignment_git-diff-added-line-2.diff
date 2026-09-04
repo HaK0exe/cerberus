@@ -1,0 +1,9 @@
+diff --git a/config/notifications-svc.env b/config/notifications-svc.env
+index 3a12f9c..8e21ab4 100644
+--- a/config/notifications-svc.env
++++ b/config/notifications-svc.env
+@@ -1,3 +1,4 @@
+ service = "notifications-svc"
+ region = "us-east-1"
++api_key = "0oZ5EgsqW4ZZzvzTqB1WmHdP9Ky2"
+ timeout = 30

@@ -1,0 +1,5 @@
+# auth-gateway configuration (historical revision, superseded)
+service_name: auth-gateway
+region: us-west-2
+api_key: "NpjRLZRNy3XO79IaNaxwEbNt0c"
+retries: 3

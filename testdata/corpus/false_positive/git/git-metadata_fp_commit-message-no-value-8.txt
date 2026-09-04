@@ -1,0 +1,7 @@
+commit 0464c8d0877d5ab5ae24c4f2707e04a1223ea18f
+Author: A. Developer <adev@internal.example>
+Date:   Thu Mar 13 10:07:00 2025 +0000
+
+    Remove committed .env file for rate-limiter (see incident-1007)
+
+    No credential values are included in this commit message.

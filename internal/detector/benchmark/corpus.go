@@ -56,9 +56,12 @@ const (
 
 // LoadCorpus walks dir (typically "testdata/corpus") and loads every
 // file under its true_positive/ and false_positive/ subdirectories as
-// a labeled Sample. Files elsewhere under dir, and dotfiles, are
-// ignored. It returns an error if dir contains neither subdirectory,
-// or if any file cannot be read.
+// a labeled Sample, recursing into nested subdirectories (e.g.
+// true_positive/git/, true_positive/web/ — used to group samples by
+// source type; see docs/development/corpus.md). Dotfiles and
+// dot-directories anywhere under those roots are ignored. It returns
+// an error if dir contains neither subdirectory, or if any file
+// cannot be read.
 func LoadCorpus(fsys fs.FS, dir string) ([]Sample, error) {
 	var samples []Sample
 
@@ -70,23 +73,31 @@ func LoadCorpus(fsys fs.FS, dir string) ([]Sample, error) {
 		{falseDir, FalsePositive},
 	} {
 		root := filepath.Join(dir, sub.name)
-		entries, err := fs.ReadDir(fsys, root)
-		if err != nil {
-			return nil, fmt.Errorf("reading corpus directory %s: %w", root, err)
-		}
 
-		for _, e := range entries {
-			if e.IsDir() || len(e.Name()) == 0 || e.Name()[0] == '.' {
-				continue
+		err := fs.WalkDir(fsys, root, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			name := d.Name()
+			if len(name) > 0 && name[0] == '.' {
+				if d.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			if d.IsDir() {
+				return nil
 			}
 
-			p := filepath.Join(root, e.Name())
 			content, err := fs.ReadFile(fsys, p)
 			if err != nil {
-				return nil, fmt.Errorf("reading corpus sample %s: %w", p, err)
+				return fmt.Errorf("reading corpus sample %s: %w", p, err)
 			}
 
-			relPath := filepath.Join(sub.name, e.Name())
+			relPath, err := filepath.Rel(dir, p)
+			if err != nil {
+				return fmt.Errorf("computing relative path for %s: %w", p, err)
+			}
 			samples = append(samples, Sample{
 				Path:  relPath,
 				Label: sub.label,
@@ -97,6 +108,10 @@ func LoadCorpus(fsys fs.FS, dir string) ([]Sample, error) {
 					Content:    content,
 				},
 			})
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("reading corpus directory %s: %w", root, err)
 		}
 	}
 

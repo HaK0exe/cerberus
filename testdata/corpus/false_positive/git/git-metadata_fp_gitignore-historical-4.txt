@@ -1,0 +1,7 @@
+# Historical .gitignore revision (retrieved via `git show`)
+*.env
+*.pem
+secrets/
+.env.local
+config/feature-flags-secret.yaml
+credentials.json

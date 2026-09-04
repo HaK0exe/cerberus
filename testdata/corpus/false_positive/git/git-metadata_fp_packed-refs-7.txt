@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+7ce9d2b357d369961fe4b95de7bb2b611b27b21d refs/heads/feature/inventory-sync-102
+94fd28c2f9b0a81ad0d472d86a682cc0390620cb refs/heads/feature/export-service-287
+275db06cedf36fed7e721f9175c528e2115c5fa9 refs/heads/feature/audit-logger-972
+191520efb83270bc2f088992d0363f346ba77d25 refs/heads/feature/analytics-pipe-352
+c3c08b82864c38830379a0b3e1c2203d1efc48f0 refs/heads/feature/audit-logger-377
+aca14d87e51ba951d9b6c1ba4b1514439e92f17f refs/heads/feature/rate-limiter-913
+950e1a2697527851fb3c9c110a23169aff05348a refs/tags/v0.2.2
+9508c2c5462eb50f6493b81699cf9d0edd6d9d2e refs/tags/v0.7.3
+2c7bc360b887a4e1b224a0dc9a3af63b466ab25a refs/tags/v0.8.8

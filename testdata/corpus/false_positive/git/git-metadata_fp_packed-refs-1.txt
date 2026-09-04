@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+273ecfd564271dc27f59820a224949512d013e1a refs/heads/feature/audit-logger-561
+f672e3a56da39776f5d053f05ae82111cd04c93e refs/heads/feature/inventory-sync-61
+e85443616a62298a35285626d2edfd402035b1ff refs/heads/feature/billing-worker-124
+ae04b48a9318199c812f328a72a2f430946a94e7 refs/heads/feature/config-sync-448
+91f9db686415b10cd51dacbb0e8d63c24c710145 refs/heads/feature/rate-limiter-605
+c487d943a756d0df851cf38eb8017e017d214b1f refs/heads/feature/auth-gateway-786
+89fd7f1b2b991b34f20b2927a28e2895caabd03b refs/tags/v0.6.7
+faf53c4f2bc73e93c9877ed8e5d726d56382ed9d refs/tags/v0.1.9
+fd196202cec9bbae9d07a0fd4c6b6771df7381b8 refs/tags/v0.5.2

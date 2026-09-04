@@ -1,0 +1,7 @@
+commit 0e50dd21921e78f09aa206e3062da4196b2384ee
+Author: A. Developer <adev@internal.example>
+Date:   Thu Mar 9 10:03:00 2025 +0000
+
+    chore(queue-consumer): migrate credentials to the vault backend
+
+    No credential values are included in this commit message.

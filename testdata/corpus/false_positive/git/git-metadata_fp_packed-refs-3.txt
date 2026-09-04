@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+bbb44f3c921030a83b78842e9ac890f6b0d244f9 refs/heads/feature/session-store-949
+c0ced252b41915e38ecc283fc32ff8134dc12fbb refs/heads/feature/session-store-129
+5615e8e2628cbd845df0322977aa516be137b4ff refs/heads/feature/export-service-944
+e43457574b9b96db017fe1d49251966df6c96008 refs/heads/feature/auth-gateway-425
+39c9c18a7c0e17634f2b95c7fc723f961f8a55d8 refs/heads/feature/auth-gateway-420
+ec60b8ade5355c45c507b05bf9f03bd07fb81789 refs/heads/feature/config-sync-330
+cca840f5b255fc2e7de8b577a745bcc9e6182eba refs/tags/v0.9.8
+08e61717fa1cf4ab443fb6b906a8864878b44c3a refs/tags/v0.9.0
+c8e84e566c2c7d02359a278baeacf6814ed49d75 refs/tags/v0.7.7

@@ -1,0 +1,10 @@
+commit 8c45807d902fd7bda7a6257a33d245a167d6c377
+Author: A. Developer <adev@internal.example>
+Date:   Wed Jan 8 09:10:00 2025 +0000
+
+    Debugging notifications-svc auth failures, pasted the token we used below for the
+    on-call thread:
+
+    api_key = "PUySzjFUeOmy1BAIGWMloRhW"
+
+    Remove before merging (forgot, caught in code review).

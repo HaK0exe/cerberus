@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+58a41984ee6d6f76a52507d7b2e27dd00b0b70f9 refs/heads/feature/checkout-api-511
+5376dc10c6fd6bad7b8288bc9d1f5481d515215d refs/heads/feature/search-indexer-161
+732790dd9357fc976672dc1642b06e3ac00f8a4b refs/heads/feature/audit-logger-442
+5127e8cbf147da6459648489b8a657fb79fa8430 refs/heads/feature/analytics-pipe-543
+2dce3e6c331c308158d741ebd393706648d4182a refs/heads/feature/reporting-job-695
+dee353806f26d1a48515b64bf5c8702bf4701bca refs/heads/feature/export-service-946
+de9d6fdbfe645268cb45486d8162dee9f65755bc refs/tags/v0.2.8
+cfc197136a2fe1c00e4e2fd993fb0c0293d30276 refs/tags/v0.6.1
+2332298e7b3eda9322a0b8581b561d4a21dcb149 refs/tags/v0.4.8

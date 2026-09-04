@@ -1,0 +1,10 @@
+commit 203b5eed8006a7a0f4782494d8dfb024707c1758
+Author: A. Developer <adev@internal.example>
+Date:   Wed Jan 9 09:11:00 2025 +0000
+
+    Debugging checkout-api auth failures, pasted the token we used below for the
+    on-call thread:
+
+    api_key = "97OnUvXTPyo0eUzF3C1E9atc"
+
+    Remove before merging (forgot, caught in code review).

@@ -1,0 +1,7 @@
+commit 732a500d54b0ed4c65189b288fe79f7db9276213
+Author: A. Developer <adev@internal.example>
+Date:   Thu Mar 11 10:05:00 2025 +0000
+
+    docs: document how to request a export-service api key from platform team
+
+    No credential values are included in this commit message.

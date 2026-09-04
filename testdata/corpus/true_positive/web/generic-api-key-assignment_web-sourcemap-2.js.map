@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "webhook-relay.min.js",
+  "sources": ["../src/webhook-relay/config.js"],
+  "names": ["apiKey", "config"],
+  "mappings": "AAAA,QAAQ",
+  "sourcesContent": [
+    "export const config = {\n  service: 'webhook-relay',\n  apiKey: 'zLGffpgw3ewdinBQdvrzrbVnvEgpXH',\n  retries: 3,\n};\n"
+  ]
+}

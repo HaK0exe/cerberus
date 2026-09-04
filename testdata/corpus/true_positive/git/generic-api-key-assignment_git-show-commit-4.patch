@@ -1,0 +1,14 @@
+commit 58c5a7ba0be7afd747b8649fc189a05a3a1426f6
+Author: CI Bot <ci-bot@internal.example>
+Date:   Mon Feb 3 14:23:00 2025 +0000
+
+    Add temporary deploy-agent deploy credential (TODO: move to vault)
+
+diff --git a/deploy/deploy-agent.conf b/deploy/deploy-agent.conf
+index 1a2b3c4..5d6e7f8 100644
+--- a/deploy/deploy-agent.conf
++++ b/deploy/deploy-agent.conf
+@@ -1,2 +1,3 @@
+ name = "deploy-agent"
++secret = "IbvRcrp8kIgSXyDolnUfwERjnJwT1T"
+ enabled = true

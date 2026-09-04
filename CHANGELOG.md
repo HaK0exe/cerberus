@@ -154,6 +154,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `testdata/corpus/prompt-injection/05-07` are neutralized the same
   way their plaintext equivalents already were, without altering
   legitimate base64/foreign-language context (#82).
+- `testdata/corpus`: expanded with 60 new true-positive and 120 new
+  false-positive samples representative of git-history artifacts
+  (diffs/patches, commit messages, historical blobs) and web/JS
+  content (minified JS, source maps, HTML with inline `<script>`),
+  grouped under new `true_positive/git/`, `true_positive/web/`,
+  `false_positive/git/`, and `false_positive/web/` subdirectories;
+  `internal/detector/benchmark.LoadCorpus` now walks the corpus
+  recursively so nested source-type subdirectories load alongside the
+  existing flat samples (#13).
 
 ### Deviations from the original issue scope
 

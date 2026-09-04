@@ -1,0 +1,9 @@
+diff --git a/scripts/queue-consumer-deploy.sh b/scripts/queue-consumer-deploy.sh
+index 0c4d9aa..77e1fdc 100755
+--- a/scripts/queue-consumer-deploy.sh
++++ b/scripts/queue-consumer-deploy.sh
+@@ -12,3 +12,4 @@ deploy() {
+   echo "deploying queue-consumer"
++  export SERVICE_TOKEN="eyJhbGciOiJIUzI1NiJ9.eyJ2nNpkG_upDuqbNDHzyEz.AF36Kp5bL6uvESSNd0URZhx9rIvbU8"
+   curl -X POST https://internal.example/deploy
+ }

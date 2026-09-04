@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled sorted
+9f1f06d1be22049bda1256bd31fb8601a26ff49f refs/heads/feature/session-store-282
+854a32d43a0735d77239b4f9e94d4ccba27b3af1 refs/heads/feature/analytics-pipe-501
+ff6b0ebaa7a3fc96459676f80859285ab046bf9d refs/heads/feature/session-store-810
+45600965451a666e8f97b948604b6afd0c485a90 refs/heads/feature/feature-flags-896
+73dbb09eca8e0c18adb21016eea8c00857d691ff refs/heads/feature/billing-worker-276
+d20bab4972bb12f9c32a46a6e6a205241d2469d8 refs/heads/feature/billing-worker-145
+59421895e240acc631b6363635a026475be44027 refs/tags/v0.8.1
+36b54e94e93867faebc0ddbfa47ff08216704dcd refs/tags/v0.4.7
+1bd70a9d45f853c7f0d2c23f7e783d5a7ba0ce85 refs/tags/v0.4.4

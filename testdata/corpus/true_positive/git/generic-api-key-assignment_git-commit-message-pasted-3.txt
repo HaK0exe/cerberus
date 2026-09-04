@@ -1,0 +1,10 @@
+commit f0cea389229e881c666137888a56ef42433de1c2
+Author: A. Developer <adev@internal.example>
+Date:   Wed Jan 10 09:12:00 2025 +0000
+
+    Debugging inventory-sync auth failures, pasted the token we used below for the
+    on-call thread:
+
+    api_key = "0j5Kr7PRzfNiD4xRUet87q42"
+
+    Remove before merging (forgot, caught in code review).
