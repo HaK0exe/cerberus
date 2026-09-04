@@ -63,6 +63,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   is covered both by fake-API unit tests and by an integration test
   against a real, locally-started ElasticMQ container (skipped, not
   failed, when Docker isn't available) (#10).
+- `internal/llm/cache`: HMAC-keyed `llm.Cache` implementation —
+  `KeyDeriver` derives a non-guessable, non-reversible cache key from
+  every `CacheKeyInput` field (candidate fingerprint, context hash,
+  model ID, prompt version, rules version) via a server-side HMAC key,
+  never a bare hash, mirroring `internal/policy.Fingerprinter`; `MemCache`
+  is an in-memory, TTL-enforcing, concurrency-safe implementation for
+  local/CLI use. The plain `llm.Cache` interface is the drop-in point
+  for a future DynamoDB-backed (`cerberus-cache` table) implementation,
+  Sprint 4 (#19).
 
 ### Deviations from the original issue scope
 
