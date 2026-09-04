@@ -94,6 +94,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   test (`prompt_lock_test.go`) fails the build if a template's wording
   changes without a matching version bump, so `PromptVersion` stays a
   reliable cache-key input for `llm.CacheKeyInput` (#16).
+- `internal/llm/circuitbreaker`: `cerberus.Validator` decorator adding
+  a per-call timeout and a closed/open/half-open circuit breaker
+  around any underlying Validator (Ollama, llama.cpp, ...). After a
+  configurable number of consecutive failures or timeouts the breaker
+  opens and short-circuits further calls; a breaker-open or timed-out
+  call returns a wrapped `ErrFallback` sentinel (`IsFallback`) instead
+  of a blocking error, so callers can fall back to the pre-LLM
+  deterministic score. State transitions are logged and exposed via
+  `Breaker.State()`/`Breaker.Stats()` for operators (#20).
 
 ### Deviations from the original issue scope
 
