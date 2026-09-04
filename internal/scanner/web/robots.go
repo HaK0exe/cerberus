@@ -9,25 +9,34 @@ import (
 	"github.com/temoto/robotstxt"
 )
 
-// robotsUserAgent is the crawler's user agent, used both for the
-// User-Agent header and for matching robots.txt group rules.
-const robotsUserAgent = "CerberusBot"
+// defaultUserAgent is the crawler's user agent when none is
+// configured — self-identifying by default, per docs/security/ssrf.md
+// and the transparent-crawler posture the rest of this package
+// assumes (robots.txt honored, scope-bounded). Scan.Scan lets a caller
+// override it (see ScanOptions.UserAgent) for engagements that need a
+// different UA string; that is an explicit, per-run opt-in, never the
+// default.
+const defaultUserAgent = "CerberusBot"
 
 // robotsCache fetches and caches robots.txt per host. A fetch failure
 // fails safe (treated as "disallow nothing", per S2-07) rather than
 // aborting the crawl.
 type robotsCache struct {
-	client *http.Client
-	mu     sync.Mutex
-	data   map[string]*robotstxt.RobotsData // host -> parsed robots.txt (nil = fetch failed, allow all)
-	onWarn func(format string, args ...any)
+	client    *http.Client
+	userAgent string
+	mu        sync.Mutex
+	data      map[string]*robotstxt.RobotsData // host -> parsed robots.txt (nil = fetch failed, allow all)
+	onWarn    func(format string, args ...any)
 }
 
-func newRobotsCache(client *http.Client, onWarn func(string, ...any)) *robotsCache {
+func newRobotsCache(client *http.Client, userAgent string, onWarn func(string, ...any)) *robotsCache {
 	if onWarn == nil {
 		onWarn = func(string, ...any) {}
 	}
-	return &robotsCache{client: client, data: make(map[string]*robotstxt.RobotsData), onWarn: onWarn}
+	if userAgent == "" {
+		userAgent = defaultUserAgent
+	}
+	return &robotsCache{client: client, userAgent: userAgent, data: make(map[string]*robotstxt.RobotsData), onWarn: onWarn}
 }
 
 func (c *robotsCache) allowed(u *url.URL) bool {
@@ -46,12 +55,21 @@ func (c *robotsCache) allowed(u *url.URL) bool {
 		// Fetch failed or robots.txt absent: fail safe, allow.
 		return true
 	}
-	return data.TestAgent(u.Path, robotsUserAgent)
+	return data.TestAgent(u.Path, c.userAgent)
 }
 
 func (c *robotsCache) fetch(u *url.URL) *robotstxt.RobotsData {
 	robotsURL := &url.URL{Scheme: u.Scheme, Host: u.Host, Path: "/robots.txt"}
-	resp, err := c.client.Get(robotsURL.String())
+	req, err := http.NewRequest(http.MethodGet, robotsURL.String(), nil)
+	if err != nil {
+		c.onWarn("robots.txt fetch failed for %s: %v (failing open: allowing all paths)", u.Host, err)
+		return nil
+	}
+	// Send the crawl's User-Agent so robots group matching and server
+	// logs see the same identity as the crawl itself (previously this
+	// fell back to Go-http-client/*).
+	req.Header.Set("User-Agent", c.userAgent)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		c.onWarn("robots.txt fetch failed for %s: %v (failing open: allowing all paths)", u.Host, err)
 		return nil

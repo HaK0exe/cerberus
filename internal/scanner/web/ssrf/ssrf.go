@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -89,6 +90,23 @@ type Guard struct {
 	MaxRedirects int
 	// DialTimeout bounds a single connection attempt.
 	DialTimeout time.Duration
+	// ProxyURL, when set, routes every request through this proxy
+	// (http://, https://, or socks5:// — e.g. a local Tor SOCKS
+	// listener) instead of dialing the validated target IP directly.
+	// This is an explicit, operator-chosen opt-in for an authorized
+	// engagement that needs its egress routed through specific
+	// infrastructure. It intentionally bypasses ValidateIP/
+	// safeDialContext for the target: with a proxy in the path, the
+	// proxy — not this process — resolves and connects to the target
+	// (SOCKS5 hands it the hostname; HTTP CONNECT does too), so this
+	// package cannot validate the destination IP anyway, and trying
+	// to would instead validate the wrong address (routinely
+	// 127.0.0.1 for a local Tor daemon, which the default blocklist
+	// would reject). The metadata-endpoint/private-range guard exists
+	// to stop an unconfigured crawl from wandering into internal
+	// infrastructure by accident; a proxy is deliberate routing, and
+	// the operator configuring it owns that responsibility.
+	ProxyURL *url.URL
 }
 
 // NewGuard returns a Guard configured with the package defaults.
@@ -204,6 +222,15 @@ func (g *Guard) NewClient(extraCheck func(req *http.Request) error) *http.Client
 		// from the dialed IP, so certificate validation still checks
 		// against the real hostname.
 		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+	}
+
+	if g.ProxyURL != nil {
+		// See ProxyURL's doc comment: the proxy owns target
+		// resolution, so DialContext reverts to a plain dialer here
+		// (it now only ever connects to the proxy itself, not the
+		// scan target) and Transport.Proxy takes over routing.
+		transport.DialContext = (&net.Dialer{Timeout: g.DialTimeout}).DialContext
+		transport.Proxy = http.ProxyURL(g.ProxyURL)
 	}
 
 	maxRedirects := g.MaxRedirects
