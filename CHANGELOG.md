@@ -113,6 +113,20 @@ project adheres to [Semantic Versioning](https://semver.org/).
   errors, malformed/retried JSON, context cancellation) with no real
   llama.cpp server required. Base URL and model are required
   `Config` fields, never hardcoded (#15).
+- `internal/llm/ollama`: `cerberus.Validator` implementation against a
+  local Ollama instance, replacing the doc-only stub — renders the
+  `candidate_validation` prompt template (`internal/llm/prompt`) against
+  the already-redacted `ValidationInput.RedactedContext`, calls Ollama's
+  `/api/generate` HTTP endpoint over an injectable transport, and parses
+  the model's response exclusively via
+  `internal/llm.ParseValidationResultWithRetry` (no ad hoc JSON
+  parsing). Connection failures, missing models, and other non-success
+  responses surface as distinct sentinel errors
+  (`ErrConnectionFailed`/`ErrModelNotFound`/`ErrRequestFailed`) a caller
+  can tell apart from a genuine low-confidence classification with
+  `errors.Is`. Base URL, model name, per-call timeout, and retry count
+  are all configurable, with no network call ever made from
+  `pkg/cerberus` (#14).
 
 ### Deviations from the original issue scope
 
