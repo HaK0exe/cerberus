@@ -87,6 +87,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   call a bounded number of times and degrades to a safe "uncertain"
   result instead of ever propagating malformed model output into the
   pipeline (#18).
+- `internal/llm/prompt`: versioned LLM prompt template loader — Markdown
+  templates under `prompts/` with an `id`/`version` front matter block,
+  `Store.Get`/`GetVersion` for latest-or-pinned lookups, and
+  `Template.Render` against `cerberus.ValidationInput`. A checksum-lock
+  test (`prompt_lock_test.go`) fails the build if a template's wording
+  changes without a matching version bump, so `PromptVersion` stays a
+  reliable cache-key input for `llm.CacheKeyInput` (#16).
 
 ### Deviations from the original issue scope
 
