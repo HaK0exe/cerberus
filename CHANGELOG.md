@@ -79,6 +79,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   overrides, role-play jailbreaks, chat control-token smuggling,
   fabricated `ValidationResult`-shaped JSON) before context ever
   reaches a Validator, per ADR-0002 (#17).
+- `internal/llm.ParseValidationResult`: strict JSON schema validation
+  for `cerberus.ValidationResult` (`classification`/`confidence`/
+  `reason`, no unknown fields, no trailing data, closed
+  `ValidationClassification` enum, confidence clamped to `[0, 1]`),
+  plus `ParseValidationResultWithRetry`, which retries a Validator
+  call a bounded number of times and degrades to a safe "uncertain"
+  result instead of ever propagating malformed model output into the
+  pipeline (#18).
 
 ### Deviations from the original issue scope
 
