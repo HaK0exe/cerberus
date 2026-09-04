@@ -36,7 +36,7 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 				ScanJavaScript: scanJS,
 			}
 
-			d, err := buildDetector(flags.rulesDir)
+			d, err := buildDetector(flags.rulesDir, nil)
 			if err != nil {
 				return err
 			}

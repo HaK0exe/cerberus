@@ -40,13 +40,24 @@ func Classify(score float64) Band {
 
 const contextWindow = 200 // bytes of surrounding context inspected for keywords
 
+// contextWindowBounds returns the [start, end) byte range of content
+// inspected as "surrounding context" for a match spanning
+// [matchStart, matchEnd) — the same ±contextWindow-byte window score
+// uses for keyword/negative-keyword matching. Exported (within the
+// package) so callers that need the raw context text for something
+// other than scoring — e.g. building a cerberus.ValidationInput for
+// the optional LLM stage — use the exact same window rather than
+// duplicating the bounds logic.
+func contextWindowBounds(contentLen, matchStart, matchEnd int) (int, int) {
+	return max(0, matchStart-contextWindow), min(contentLen, matchEnd+contextWindow)
+}
+
 // score computes a deterministic confidence score in [0, 1] for a
 // candidate match of rule against content, using surrounding context.
 func score(rule rules.CompiledRule, content []byte, start, end int) float64 {
 	s := rule.Confidence
 
-	ctxStart := max(0, start-contextWindow)
-	ctxEnd := min(len(content), end+contextWindow)
+	ctxStart, ctxEnd := contextWindowBounds(len(content), start, end)
 	context := strings.ToLower(string(content[ctxStart:ctxEnd]))
 
 	if rule.Entropy.Enabled {
