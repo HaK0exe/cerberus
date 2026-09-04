@@ -146,6 +146,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   F1 per ROADMAP.md's quality-gate rule. See
   `docs/architecture/llm-quality-gate.md` for the baseline measurement
   and the resulting default-on/off decision (#23).
+- `internal/llm.Sanitize`: obfuscation-aware defense-in-depth — the
+  injection-neutralization pass now also decodes candidate base64
+  tokens, ROT13-folds text, and folds fullwidth/homoglyph Unicode back
+  to ASCII before testing against `injectionPatterns`, so the
+  encoded/obfuscated prompt-injection samples in
+  `testdata/corpus/prompt-injection/05-07` are neutralized the same
+  way their plaintext equivalents already were, without altering
+  legitimate base64/foreign-language context (#82).
 
 ### Deviations from the original issue scope
 
