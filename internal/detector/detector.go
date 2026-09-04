@@ -12,6 +12,7 @@ import (
 	"github.com/HaK0exe/cerberus/internal/llm"
 	"github.com/HaK0exe/cerberus/internal/policy"
 	"github.com/HaK0exe/cerberus/internal/rules"
+	"github.com/HaK0exe/cerberus/internal/version"
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
 )
 
@@ -27,10 +28,11 @@ import (
 // candidates are dropped unless WithMinEmitBand lowers the bar) — see
 // docs/architecture/overview.md's "Detection pipeline" diagram.
 type Detector struct {
-	rules       []rules.CompiledRule
-	fingerprint *policy.Fingerprinter
-	minEmitBand Band // lowest band this detector emits as a Finding on its own
-	validator   cerberus.Validator
+	rules          []rules.CompiledRule
+	fingerprint    *policy.Fingerprinter
+	minEmitBand    Band // lowest band this detector emits as a Finding on its own
+	validator      cerberus.Validator
+	rulesetVersion string // rules.Checksum(rules) — computed once at construction
 }
 
 type Option func(*Detector)
@@ -63,9 +65,10 @@ func WithValidator(v cerberus.Validator) Option {
 
 func New(compiledRules []rules.CompiledRule, fp *policy.Fingerprinter, opts ...Option) *Detector {
 	d := &Detector{
-		rules:       compiledRules,
-		fingerprint: fp,
-		minEmitBand: BandFinding,
+		rules:          compiledRules,
+		fingerprint:    fp,
+		minEmitBand:    BandFinding,
+		rulesetVersion: rules.Checksum(compiledRules),
 	}
 	for _, opt := range opts {
 		opt(d)
@@ -94,8 +97,8 @@ func (d *Detector) Detect(ctx context.Context, artifact cerberus.Artifact) ([]ce
 			}
 
 			value := artifact.Content[start:end]
-			s := score(rule, artifact.Content, start, end)
-			band := Classify(s)
+			ds := explainScore(rule, artifact.Content, start, end)
+			band := Classify(ds.FinalScore)
 
 			shouldEmit := bandRank(band) >= bandRank(d.minEmitBand)
 			var llmMeta map[string]string
@@ -141,7 +144,14 @@ func (d *Detector) Detect(ctx context.Context, artifact cerberus.Artifact) ([]ce
 					// band, exactly as if no Validator were configured.
 					// See internal/llm/circuitbreaker.IsFallback.
 				} else {
-					s = adjustScore(s, result)
+					adjusted := adjustScore(ds.FinalScore, result)
+					ds.LLMAdjustment = adjusted - ds.FinalScore
+					ds.FinalScore = adjusted
+					ds.Signals = append(ds.Signals, cerberus.Signal{
+						Name:   "llm_review",
+						Score:  ds.LLMAdjustment,
+						Reason: result.Reason,
+					})
 					llmMeta = map[string]string{
 						"llm_classification": string(result.Classification),
 						"llm_reason":         result.Reason,
@@ -169,21 +179,29 @@ func (d *Detector) Detect(ctx context.Context, artifact cerberus.Artifact) ([]ce
 				continue
 			}
 
+			now := time.Now().UTC()
 			f := cerberus.Finding{
 				ID:           newID("fnd"),
 				RuleID:       rule.ID,
 				Type:         rule.ID,
 				Severity:     rule.Severity,
-				Confidence:   s,
+				Confidence:   ds.FinalScore,
 				SourceType:   artifact.SourceType,
 				SourceURI:    artifact.URI,
 				Path:         artifact.Path,
 				Commit:       artifact.Commit,
 				State:        cerberus.StateOpen,
-				CreatedAt:    time.Now().UTC(),
-				UpdatedAt:    time.Now().UTC(),
+				CreatedAt:    now,
+				UpdatedAt:    now,
 				MaskedPrefix: policy.MaskedPrefix(value, 4),
 				Length:       len(value),
+				Provenance: cerberus.DetectionProvenance{
+					DetectorVersion: version.Version,
+					RulesetVersion:  d.rulesetVersion,
+					RuleID:          rule.ID,
+					Signals:         ds.Signals,
+					CreatedAt:       now,
+				},
 			}
 			if d.fingerprint != nil {
 				f.Fingerprint = d.fingerprint.Fingerprint(value)

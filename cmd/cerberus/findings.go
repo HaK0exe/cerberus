@@ -25,7 +25,7 @@ func newFindingsCmd(flags *globalFlags) *cobra.Command {
 		Short: "Get a single finding by ID",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("findings get requires a running cerberus server (see Sprint 4); not implemented in CLI-only mode")
+			return fmt.Errorf("findings get requires a running cerberus server (see Sprint 4); use `cerberus scan file --format explain` for offline use")
 		},
 	})
 

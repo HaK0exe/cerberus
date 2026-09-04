@@ -185,7 +185,7 @@ func TestChecksum_ChangesWithBody(t *testing.T) {
 	if v1.Checksum() == v2.Checksum() {
 		t.Fatalf("Checksum() for two templates with different bodies must differ")
 	}
-	if v1.Checksum() != v1.Checksum() {
-		t.Fatalf("Checksum() must be deterministic")
+	if first, second := v1.Checksum(), v1.Checksum(); first != second {
+		t.Fatalf("Checksum() must be deterministic: %q != %q", first, second)
 	}
 }

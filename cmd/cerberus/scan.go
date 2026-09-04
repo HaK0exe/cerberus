@@ -215,8 +215,44 @@ func renderFindings(format string, findings []cerberus.Finding) error {
 				f.Severity, f.Type, f.MaskedPrefix, f.Confidence, f.Path, commitSuffix(f.Commit))
 		}
 		return nil
+	case "explain":
+		if len(findings) == 0 {
+			fmt.Println("no findings")
+			return nil
+		}
+		for i, f := range findings {
+			if i > 0 {
+				fmt.Println()
+			}
+			explainFinding(f)
+		}
+		return nil
 	default:
-		return fmt.Errorf("unknown format %q (want json|text|sarif)", format)
+		return fmt.Errorf("unknown format %q (want json|text|sarif|explain)", format)
+	}
+}
+
+// explainFinding prints the per-signal breakdown behind a Finding's
+// Confidence — the offline equivalent of `cerberus findings explain
+// <id>` (Sprint 4, once findings are server-persisted). Never prints a
+// raw secret value: only what Finding/DetectionProvenance already
+// carry (masked prefix, signals, rule/ruleset identity).
+func explainFinding(f cerberus.Finding) {
+	fmt.Printf("%s  %s  %s%s\n", f.Type, f.MaskedPrefix, f.Path, commitSuffix(f.Commit))
+	fmt.Println()
+	for _, s := range f.Provenance.Signals {
+		fmt.Printf("  %-20s %+.2f   %s\n", s.Name, s.Score, s.Reason)
+	}
+	fmt.Println()
+	fmt.Printf("  final confidence: %.2f (%s)\n", f.Confidence, detector.Classify(f.Confidence))
+	fmt.Println()
+	fmt.Printf("  rule:      %s\n", f.Provenance.RuleID)
+	fmt.Printf("  ruleset:   %s\n", f.Provenance.RulesetVersion)
+	fmt.Printf("  detector:  %s\n", f.Provenance.DetectorVersion)
+	if f.Provenance.ModelName != "" {
+		fmt.Printf("  llm:       %s (prompt %s)\n", f.Provenance.ModelName, f.Provenance.PromptVersion)
+	} else {
+		fmt.Printf("  llm:       none (deterministic only)\n")
 	}
 }
 

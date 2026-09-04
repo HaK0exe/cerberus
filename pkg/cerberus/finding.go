@@ -57,4 +57,8 @@ type Finding struct {
 	UpdatedAt time.Time
 
 	Metadata map[string]string
+
+	// Provenance reconstructs how Confidence was derived. Never holds
+	// a raw secret value — see DetectionProvenance.
+	Provenance DetectionProvenance
 }
