@@ -159,11 +159,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   processes off this frontier — that requires a `cerberus web worker`
   command, deliberately left for when S2-10 lands. See the comment on
   issue #11 for the same note.
-- S3-10 (#23) asks for the corpus run "with and without" the LLM
-  stage. This sandbox has no Ollama/llama.cpp server available, so
-  only the "without" (baseline) measurement is real here; the harness
-  and `--llm` flag needed to complete the "with" side are in place and
-  documented in `docs/architecture/llm-quality-gate.md`'s "What's
-  missing" section, but no LLM-assisted numbers are reported —
-  fabricating them was explicitly out of bounds for this change. See
-  the comment on issue #23 for the same note.
+- S3-10 (#23) initially shipped with only the "without LLM" baseline
+  measured (no Ollama/llama.cpp server was available at the time);
+  the "with LLM" side was completed in a follow-up once a local Ollama
+  server (`gemma3:4b`) became available — see
+  `docs/architecture/llm-quality-gate.md`'s "LLM-assisted measurement"
+  section for the real result and the quality-gate decision it
+  produced (LLM stage stays opt-in: recall/F1 improved but precision
+  did not, on a 22-sample corpus too small to be conclusive either
+  way).

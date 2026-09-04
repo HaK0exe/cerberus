@@ -12,22 +12,24 @@ From [`ROADMAP.md`](../../ROADMAP.md), Sprint 3:
 > improves precision without materially hurting recall on the corpus.
 
 This document runs the corpus through the deterministic detection
-pipeline with the Sprint 3 LLM review stage off, using the harness in
-[`internal/detector/benchmark`](../../internal/detector/benchmark) and
-the `cerberus benchmark corpus` command
+pipeline with the Sprint 3 LLM review stage off and on, using the
+harness in [`internal/detector/benchmark`](../../internal/detector/benchmark)
+and the `cerberus benchmark corpus` command
 ([`cmd/cerberus/benchmark.go`](../../cmd/cerberus/benchmark.go)).
 
-**Status: partial.** The baseline (no-LLM) numbers below are real,
-measured results. The "LLM-assisted" side of the comparison this issue
-calls for — the same corpus run with `--llm` against a real
-Ollama/llama.cpp server — is **not yet available**; see
-["What's missing" below](#whats-missing-and-how-to-complete-it). Per
-the quality-gate rule above, the default therefore stays as it already
-is: **the LLM stage is opt-in (`--llm`), never on by default**, because
-there is no measurement yet that it "demonstrably improves precision
-without materially hurting recall" — the gate requires evidence to
-turn LLM-on-by-default *on*, not evidence to keep it off, and no such
-evidence exists yet.
+**Status: complete.** Both sides of the comparison below are real,
+measured results — baseline (no LLM) and LLM-assisted (`--llm` against
+a real local Ollama server, model `gemma3:4b`). Applying the
+quality-gate rule above to these numbers: **the LLM stage stays
+opt-in (`--llm`), not on by default.** Recall improved substantially
+(+0.333) and F1 improved (+0.203), but precision *decreased*
+(1.0000 → 0.9091 — one new false positive) rather than improving as
+the rule requires, and the corpus is only 22 samples, too small for a
+single false positive's ±10-point precision swing to be a reliable
+signal either way. See ["LLM-assisted measurement"](#llm-assisted-measurement-real-result)
+below for the full reasoning, and
+["Re-running this benchmark"](#re-running-this-benchmark) to reproduce
+or re-evaluate once the corpus is larger (#66/#13).
 
 ## The corpus
 
@@ -116,59 +118,84 @@ Per-sample breakdown (`cerberus benchmark corpus --verbose`):
     next (see [`scoring.md`](scoring.md)'s note that thresholds are
     starting points, not fixed constants).
 
-## What's missing, and how to complete it
+## LLM-assisted measurement (real result)
 
-The issue's acceptance criteria call for the corpus run **with and
-without** the LLM stage. This PR delivers the harness and the without
-side; the with side needs a real local LLM, which is not available in
-this sandbox:
-
-- No Ollama server is running here (`ollama serve` / `:11434`), and no
-  model is pulled.
-- No llama.cpp server is running either.
-- `internal/llm/pipeline`, `internal/llm/ollama`, and
-  `internal/llm/llamacpp` are untouched by this PR (out of scope per
-  the task boundaries — another line of work owns them) and are ready
-  to use as-is.
-
-The harness was deliberately built so this is a one-command follow-up,
-**not a rewrite**: `cerberus benchmark corpus` accepts `--llm`
-(`cmd/cerberus/benchmark.go`) and wires in the exact same validator
-stack `cerberus scan file --llm` uses
-(`buildValidator`: Ollama primary → optional llama.cpp fallback →
-circuit breaker → response cache, from `internal/llm/pipeline.New`).
-`internal/detector/benchmark.Run` takes any `cerberus.Validator`-backed
-`detector.Detector` — real or fake — so nothing about the harness
-itself needs to change once a real model is available.
-
-To complete the measurement once Ollama is installed:
-
-```bash
-# 1. Install/start Ollama and pull the default model this repo targets:
-ollama pull llama3.1:8b
-ollama serve   # if not already running as a service
-
-# 2. Run the harness against it:
-cerberus benchmark corpus --llm --offline=false --verbose
-
-# 3. Compare the printed "LLM-assisted (--llm)" precision/recall/F1
-#    against the "baseline (no LLM)" block above, and update this
-#    document (and the decision in the "The rule being applied"
-#    section) with the real numbers.
+```text
+$ cerberus benchmark corpus --llm --offline=false --llm-model gemma3:4b --verbose
+LLM-assisted (--llm)
+  precision: 0.9091
+  recall:    0.8333
+  F1:        0.8696
+  confusion: tp=10 fn=2 fp=1 tn=9 (n=22)
 ```
 
-A note has been left on issue #23
-(https://github.com/HaK0exe/cerberus/issues/23) explaining this gap
-and what's needed to close it. This PR does not close #23 — the
-harness and baseline half of the acceptance criteria are done, but the
-"with LLM" comparison the issue explicitly asks for is not, so the
-issue should stay open until that follow-up run happens.
+Measured against a real local Ollama server (`ollama serve`,
+`http://localhost:11434`) running `gemma3:4b` — not the CLI's own
+default model (`llama3.1:8b`, which was not the model available on the
+machine this was measured on; pass `--llm-model` to match whatever is
+actually pulled). No fake/simulated Validator is used anywhere in this
+harness — `--llm` always wires in the real `internal/llm/pipeline`
+stack (Ollama → optional llama.cpp fallback → circuit breaker →
+response cache), so these numbers reflect an actual model call for
+every `llm_review`-band candidate.
 
-## Reproducing this report
+**What changed vs. baseline:**
+
+- **4 of the 6 baseline false negatives in the `llm_review` band
+  became true positives** — the two `generic-api-key-assignment` and
+  two `generic-jwt` samples the deterministic stage correctly flagged
+  as *ambiguous* (score in `[0.70, 0.90)`) were classified
+  `likely_secret` by the model and promoted, exactly the behavior the
+  LLM stage exists for.
+- **The 2 `generic-password-assignment` false negatives remain false
+  negatives** — as predicted in the baseline section above, those
+  samples score `0.50` (`low_confidence`) under the current rule
+  weights and never reach the `llm_review` band, so the LLM stage
+  never even sees them. This is the same pre-existing scoring-tuning
+  gap, unaffected by the LLM stage either way.
+- **One new false positive**:
+  `false_positive/generic-api-key-assignment_fp_config-sample.yaml` —
+  a sample-config YAML file (`token: "k7Lp0Vb3Nc6Ht9Ws1Fg4Ae8Dj2Rk5YQx"`,
+  clearly a copy-this-and-edit template by its own comment) that the
+  model classified `likely_secret`. This is a defensible mistake — the
+  token value alone is indistinguishable from a real one, and only the
+  surrounding "local dev only, copy to config.yaml" comment marks it
+  as a template, which is exactly the kind of contextual judgment call
+  an LLM stage is *supposed* to help with, not always get right. It's
+  a genuine miss, not a sign of the sanitizer or schema-validation
+  layers misbehaving (`internal/llm.ParseValidationResultWithRetry`
+  parsed a well-formed, schema-valid response; the model was simply
+  wrong).
+
+**Applying the quality-gate rule:** recall improved substantially
+(0.5000 → 0.8333, +0.333) and F1 improved (0.6667 → 0.8696, +0.203),
+but precision *decreased* (1.0000 → 0.9091) rather than improving as
+the rule requires ("demonstrably improves precision without
+materially hurting recall") — the actual trade observed here is the
+mirror image: recall improves a lot, precision drops a little. On a
+22-sample corpus, a single false positive is a 10-percentage-point
+swing on the false-positive-bearing subset, which is not a reliable
+basis for concluding precision genuinely regresses at scale, but it's
+equally not a basis for concluding it doesn't. **Decision: the LLM
+stage stays opt-in (`--llm`), not enabled by default.** The signal is
+promising — recall and F1 both improve meaningfully — but the letter
+of the quality gate asks for a precision improvement specifically, and
+this measurement doesn't show one; re-run this benchmark once the
+corpus reaches the target size in #66/#13 before revisiting the
+default.
+
+## Re-running this benchmark
 
 ```bash
 go build -o bin/cerberus ./cmd/cerberus
+
+# Baseline (no LLM, no network call):
 ./bin/cerberus benchmark corpus --verbose
+
+# LLM-assisted (requires a running Ollama server and a pulled model):
+ollama pull <model>            # e.g. llama3.1:8b, or whatever's available
+ollama serve                   # if not already running
+./bin/cerberus benchmark corpus --llm --offline=false --llm-model <model> --verbose
 ```
 
 The harness's own correctness (precision/recall/F1 math, corpus
