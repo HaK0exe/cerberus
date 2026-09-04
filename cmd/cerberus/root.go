@@ -28,7 +28,7 @@ func newRootCmd() *cobra.Command {
 	}
 
 	root.PersistentFlags().StringVar(&flags.configPath, "config", "", "path to config file")
-	root.PersistentFlags().StringVar(&flags.format, "format", "text", "output format: json|text|sarif")
+	root.PersistentFlags().StringVar(&flags.format, "format", "text", "output format: json|text|sarif|explain")
 	root.PersistentFlags().StringVar(&flags.logLevel, "log-level", "info", "log level: debug|info|warn|error")
 	root.PersistentFlags().BoolVar(&flags.quiet, "quiet", false, "suppress non-essential output")
 	root.PersistentFlags().BoolVar(&flags.offline, "offline", true, "never make outbound network calls (default: on)")
@@ -39,6 +39,11 @@ func newRootCmd() *cobra.Command {
 		newGitCmd(flags),
 		newWebCmd(flags),
 		newFindingsCmd(flags),
+		newCorrelateCmd(flags),
+		newCredentialsCmd(flags),
+		newIncidentsCmd(flags),
+		newPolicyCmd(flags),
+		newBenchmarkCmd(flags),
 		newRulesCmd(flags),
 		newRemediationCmd(flags),
 		newServerCmd(flags),

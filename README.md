@@ -81,6 +81,7 @@ pkg/cerberus/         stable public domain types & interfaces (Artifact, Finding
 internal/detector/    regex + entropy + context scoring engine
 internal/rules/       rule loader/compiler
 internal/scanner/     git + web scanners (contracts now, implementations in Sprint 2)
+internal/credentials/ Credential/Exposure/Incident correlation (dedups findings sharing a fingerprint)
 internal/llm/         local LLM validator contracts (Ollama/llama.cpp — Sprint 3)
 internal/remediation/ remediation plan/approval/execution contracts (AWS — Sprint 5)
 internal/mcp/         MCP server (Sprint 4)
