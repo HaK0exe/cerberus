@@ -33,7 +33,7 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 				mode, ref = gitscanner.ModeBranch, branch
 			}
 
-			d, err := buildDetector(flags.rulesDir)
+			d, err := buildDetector(flags.rulesDir, nil)
 			if err != nil {
 				return err
 			}
