@@ -13,37 +13,78 @@ import (
 	"github.com/HaK0exe/cerberus/internal/credentials"
 	"github.com/HaK0exe/cerberus/internal/findings"
 	"github.com/HaK0exe/cerberus/internal/mcp"
+	"github.com/HaK0exe/cerberus/internal/mcpserve"
 	"github.com/HaK0exe/cerberus/internal/policyengine"
+	"github.com/HaK0exe/cerberus/internal/version"
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
 )
 
 // newMCPCmd exercises internal/mcp — a real, tested tool-dispatch
 // pipeline (Authorization → Policy → Scope validation → Rate limiting
-// → Audit → Execution) with no transport wired to it yet. `tools` and
-// `call` run that pipeline offline, in-process, the same way a future
-// stdio/HTTP transport would, minus the transport itself.
+// → Audit → Execution). `serve` runs it behind a real stdio transport
+// (internal/mcpserve); `tools` and `call` run it offline, in-process,
+// for inspection and scripting.
 func newMCPCmd(flags *globalFlags) *cobra.Command {
-	mcpCmd := &cobra.Command{Use: "mcp", Short: "Inspect and exercise the Cerberus MCP control-plane server (internal/mcp)"}
+	mcpCmd := &cobra.Command{Use: "mcp", Short: "Inspect and run the Cerberus MCP control-plane server (internal/mcp)"}
 	mcpCmd.AddCommand(newMCPServeCmd(flags))
 	mcpCmd.AddCommand(newMCPToolsCmd(flags))
 	mcpCmd.AddCommand(newMCPCallCmd(flags))
 	return mcpCmd
 }
 
-// TODO(sprint-4): wire a stdio (and later HTTP) transport onto
-// internal/mcp.Server.Dispatch — the pipeline itself is implemented
-// and tested (see internal/mcp/server_test.go, docs/adr/0009-mcp-v2.md).
+// newMCPServeCmd wires internal/mcpserve.Run's stdio transport into
+// the CLI. See internal/mcpserve's package doc for what it does and
+// docs/adr/0009-mcp-v2.md for the overall design. This is the CLI-
+// embedded way to run the server; cmd/cerberus-mcp is the standalone-
+// binary equivalent for MCP client configs that want to launch just
+// the server, not the whole cerberus CLI surface.
 func newMCPServeCmd(flags *globalFlags) *cobra.Command {
-	return &cobra.Command{
+	var findingsPath string
+	var correlatePath string
+	var policyPath string
+	var auditPath string
+	var principalID string
+	var scopes []string
+	var rate, burst float64
+
+	cmd := &cobra.Command{
 		Use:   "serve",
-		Short: "Run the Cerberus MCP server (stdio) — transport not implemented yet",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("cerberus mcp serve has no stdio/HTTP transport wired yet: " +
-				"internal/mcp's tool pipeline (Server.Dispatch) is implemented and tested; " +
-				"see `cerberus mcp tools`/`cerberus mcp call` for offline use, " +
-				"and docs/adr/0009-mcp-v2.md for what a transport still needs to add")
+		Short: "Run the Cerberus MCP server over stdio for a connecting MCP client",
+		Long: "Serves internal/mcp's tool pipeline to an MCP client (Claude Code,\n" +
+			"Claude Desktop, or any MCP-compatible host) over stdio.\n\n" +
+			"All MCP protocol frames go to stdout — never print anything else\n" +
+			"there. Diagnostics go to stderr. The granted scopes (--scope) are\n" +
+			"fixed for the process lifetime: this command does not authenticate\n" +
+			"per-request callers, so only run it in a context where the launching\n" +
+			"client is itself trusted with exactly those scopes (see --scope).",
+		Example: "  cerberus mcp serve --scope findings:read --scope credentials:read\n" +
+			"  cerberus mcp serve --findings findings.json --correlate correlate.json --scope findings:read",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return mcpserve.Run(cmd.Context(), mcpserve.Options{
+				FindingsPath:  findingsPath,
+				CorrelatePath: correlatePath,
+				PolicyPath:    policyPath,
+				AuditPath:     auditPath,
+				PrincipalID:   principalID,
+				Scopes:        scopes,
+				Rate:          rate,
+				Burst:         burst,
+				ServerName:    "cerberus",
+				ServerVersion: version.Version,
+				Stderr:        os.Stderr,
+			})
 		},
 	}
+
+	cmd.Flags().StringVar(&findingsPath, "findings", "", "path to a Findings JSON file to seed the findings store")
+	cmd.Flags().StringVar(&correlatePath, "correlate", "", "path to a `cerberus correlate --format json` document to seed the credentials/incidents stores")
+	cmd.Flags().StringVar(&policyPath, "policy", "", "path to a native policyengine YAML policy file (default: empty policy, default-deny)")
+	cmd.Flags().StringVar(&auditPath, "audit-log", "", "append-only JSONL audit log path (default: stderr)")
+	cmd.Flags().StringVar(&principalID, "principal", "mcp-client", "principal ID recorded in the audit trail for every call this process serves")
+	cmd.Flags().StringArrayVar(&scopes, "scope", nil, "scope granted to whatever client connects over stdio, repeatable (e.g. --scope findings:read); none by default (default-deny)")
+	cmd.Flags().Float64Var(&rate, "rate-limit", 5, "sustained tool calls per second allowed for this principal")
+	cmd.Flags().Float64Var(&burst, "burst", 10, "burst allowance of tool calls for this principal")
+	return cmd
 }
 
 func newMCPToolsCmd(flags *globalFlags) *cobra.Command {
@@ -51,7 +92,7 @@ func newMCPToolsCmd(flags *globalFlags) *cobra.Command {
 		Use:   "tools",
 		Short: "List the MCP tools this server exposes, with their required scopes and arguments",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			for _, t := range buildMCPTools(findings.NewMemStore(), credentials.NewMemStore()) {
+			for _, t := range mcpserve.BuildTools(findings.NewMemStore(), credentials.NewMemStore()) {
 				scopeNames := make([]string, len(t.RequiredScopes()))
 				for i, s := range t.RequiredScopes() {
 					scopeNames[i] = string(s)
@@ -66,8 +107,8 @@ func newMCPToolsCmd(flags *globalFlags) *cobra.Command {
 
 // newMCPCallCmd dispatches a single ToolCall through the real
 // internal/mcp.Server pipeline, in-process, against in-memory stores
-// seeded from local files — the offline equivalent of what a future
-// transport does per inbound request.
+// seeded from local files — the offline equivalent of what
+// `cerberus mcp serve` does per inbound request.
 func newMCPCallCmd(flags *globalFlags) *cobra.Command {
 	var toolName string
 	var findingsPath string
@@ -84,7 +125,7 @@ func newMCPCallCmd(flags *globalFlags) *cobra.Command {
 			"`cerberus correlate --format json` document (--correlate) into\n" +
 			"in-memory stores, builds a Principal from --principal/--scope, and\n" +
 			"runs one ToolCall through internal/mcp.Server.Dispatch — the exact\n" +
-			"pipeline a future stdio/HTTP transport will use per request.",
+			"pipeline `cerberus mcp serve` uses per request.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if toolName == "" {
 				return fmt.Errorf("--tool is required")
@@ -120,7 +161,7 @@ func newMCPCallCmd(flags *globalFlags) *cobra.Command {
 				policyengine.NewNativeEngine(policy),
 				mcp.NewRateLimiter(10, 10),
 				audit.NopSink{},
-				buildMCPTools(findingsStore, credStore)...,
+				mcpserve.BuildTools(findingsStore, credStore)...,
 			)
 
 			principal := mcp.Principal{ID: principalID, GrantedScopes: toScopes(scopes)}
@@ -138,27 +179,6 @@ func newMCPCallCmd(flags *globalFlags) *cobra.Command {
 	cmd.Flags().StringArrayVar(&scopes, "scope", nil, "granted scope, repeatable (e.g. --scope findings:read)")
 	cmd.Flags().StringArrayVar(&toolArgs, "arg", nil, "tool argument key=value, repeatable")
 	return cmd
-}
-
-// buildMCPTools returns every tool internal/mcp implements, wired to
-// the given stores. StartScanTool/CancelScanTool/GetScanTool/
-// RequestRemediationTool/ExecuteRemediationTool hold no store — they
-// are the honest stubs documented in docs/adr/0009-mcp-v2.md.
-func buildMCPTools(findingsStore findings.Store, credStore *credentials.MemStore) []mcp.Tool {
-	return []mcp.Tool{
-		&mcp.ListFindingsTool{Store: findingsStore},
-		&mcp.GetFindingTool{Store: findingsStore},
-		&mcp.ExplainFindingTool{Store: findingsStore},
-		&mcp.ListCredentialsTool{Store: credStore},
-		&mcp.GetCredentialTool{Store: credStore},
-		&mcp.ListIncidentsTool{Store: credStore},
-		&mcp.GetIncidentTool{Store: credStore},
-		&mcp.StartScanTool{},
-		&mcp.CancelScanTool{},
-		&mcp.GetScanTool{},
-		&mcp.RequestRemediationTool{},
-		&mcp.ExecuteRemediationTool{},
-	}
 }
 
 func loadFindingsInto(ctx context.Context, store *findings.MemStore, path string) error {

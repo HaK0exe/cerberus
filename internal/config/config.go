@@ -1,7 +1,16 @@
-// Package config loads Cerberus configuration from file, environment,
-// and CLI flags (viper, wired in Sprint 1 CLI work). This is a minimal
-// scaffold sufficient for `cerberus scan file`.
+// Package config loads Cerberus configuration from a YAML file, so
+// repeated CLI flags (--rules-dir, --log-level, --offline) can be set
+// once per project instead of on every invocation. CLI flags always
+// take precedence over a config file value — see LoadFile and
+// cmd/cerberus/root.go's globalFlags.loadConfig.
 package config
+
+import (
+	"fmt"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
 
 // Config is the root configuration structure. Fields are added
 // incrementally as each subsystem needs them — do not pre-populate
@@ -19,4 +28,22 @@ func Default() Config {
 		LogLevel: "info",
 		Offline:  true,
 	}
+}
+
+// LoadFile reads a YAML config file at path, starting from Default()
+// so fields the file omits keep their defaults rather than zeroing
+// out (e.g. an explicit `offline: false` overrides the default, but a
+// file that never mentions `offline` at all doesn't accidentally flip
+// it to false either — yaml.Unmarshal only touches keys present in
+// the document).
+func LoadFile(path string) (Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg := Default()
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return Config{}, fmt.Errorf("parsing config: %w", err)
+	}
+	return cfg, nil
 }

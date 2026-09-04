@@ -13,14 +13,19 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 	git := &cobra.Command{Use: "git", Short: "Git repository scanning"}
 
 	var staged, history, unmask bool
-	var branch, commit string
+	var branch, commit, failOn string
 
 	scan := &cobra.Command{
 		Use:     "scan <path>",
 		Short:   "Scan a Git repository (working tree, staged, commit, branch, or full history)",
-		Example: "  cerberus git scan . --history\n  cerberus git scan . --branch main --format sarif",
+		Example: "  cerberus git scan . --history\n  cerberus git scan . --branch main --format sarif\n  cerberus git scan . --staged --fail-on high  # pre-commit gate",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			failOnSeverity, err := parseFailOn(failOn)
+			if err != nil {
+				return err
+			}
+
 			mode := gitscanner.ModeWorkingTree
 			ref := ""
 			switch {
@@ -60,7 +65,10 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 				all = append(all, findings...)
 			}
 
-			return renderFindings(flags.UI(), flags.format, all)
+			if err := renderFindings(flags.UI(), flags.format, all); err != nil {
+				return err
+			}
+			return checkFailOn(all, failOnSeverity)
 		},
 	}
 	scan.Flags().BoolVar(&staged, "staged", false, "scan staged changes only")
@@ -68,7 +76,9 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 	scan.Flags().StringVar(&branch, "branch", "", "scan a specific branch")
 	scan.Flags().StringVar(&commit, "commit", "", "scan a specific commit")
 	scan.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
+	scan.Flags().StringVar(&failOn, "fail-on", "", "exit non-zero if any finding is at or above this severity: critical|high|medium|low (default: never fail, exit 0) — for CI/git-hook gating")
 
 	git.AddCommand(scan)
+	git.AddCommand(newGitInstallHookCmd(flags))
 	return git
 }

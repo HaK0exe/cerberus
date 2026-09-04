@@ -78,12 +78,67 @@ GOPATH)/bin` if GOBIN is unset) — make sure that directory is on your
 Everything below is on the roadmap, not yet available:
 
 ```bash
-cerberus git scan . --history          # Sprint 2
-cerberus web scan https://example.com  # Sprint 2
 cerberus server                        # Sprint 4
-cerberus mcp                           # Sprint 4
 cerberus remediation apply <id>        # Sprint 5
 ```
+
+## Automating Cerberus
+
+### Config file
+
+Repeated flags (`--rules-dir`, `--log-level`, `--offline`) can be set
+once per project in a `.cerberus.yaml` (or `.cerberus.yml`) file in
+the current directory, auto-discovered on every run — or pass
+`--config path/to/file.yaml` explicitly. A CLI flag always overrides
+the config file, which always overrides the built-in default.
+
+```yaml
+# .cerberus.yaml
+rules_dir: rules
+log_level: debug
+offline: true
+```
+
+### Failing CI/scripts on findings
+
+`scan file` and `git scan` accept `--fail-on critical|high|medium|low`:
+the command still renders every finding, but exits non-zero if any of
+them meet or exceed that severity — the exit-code contract CI and
+scripts gate on (never use `--offline=false` in CI unless you mean it).
+
+```bash
+cerberus scan file . --fail-on high
+cerberus git scan . --staged --fail-on high
+```
+
+### Git pre-commit hook
+
+`cerberus git install-hook` writes a pre-commit hook (resolved via
+`git rev-parse --git-path hooks`, so it works with worktrees and a
+custom `core.hooksPath`) that blocks a commit if a staged change
+contains a secret at or above `--fail-on`'s threshold:
+
+```bash
+cerberus git install-hook --fail-on high
+```
+
+### MCP server
+
+`cerberus mcp serve` (or the standalone `cerberus-mcp` binary, for MCP
+client configs that shouldn't launch the whole CLI) serves
+`internal/mcp`'s tool pipeline — Authorization → Policy → Scope
+validation → Rate limiting → Audit → Execution — over stdio to any
+MCP-compatible client:
+
+```bash
+cerberus mcp serve \
+  --findings findings.json --correlate correlate.json \
+  --policy policy.yaml --scope findings:read --scope credentials:read
+```
+
+`cerberus mcp tools` lists every tool with its required scopes and
+arguments; `cerberus mcp call --tool ... --arg k=v` dispatches one
+call offline, without a transport, for scripting/debugging.
 
 ## Repository layout
 

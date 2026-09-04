@@ -49,12 +49,17 @@ type llmFlags struct {
 func newScanFileCmd(flags *globalFlags) *cobra.Command {
 	lf := &llmFlags{}
 	var unmask bool
+	var failOn string
 
 	cmd := &cobra.Command{
 		Use:   "file [path...]",
 		Short: "Scan one or more files for exposed secrets",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			failOnSeverity, err := parseFailOn(failOn)
+			if err != nil {
+				return err
+			}
 			if lf.enabled && flags.offline {
 				return fmt.Errorf("--llm requires --offline=false (cerberus never makes a network call, including to a local Ollama/llama.cpp server, unless you explicitly opt out of --offline)")
 			}
@@ -86,7 +91,10 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 				all = append(all, findings...)
 			}
 
-			return renderFindings(flags.UI(), flags.format, all)
+			if err := renderFindings(flags.UI(), flags.format, all); err != nil {
+				return err
+			}
+			return checkFailOn(all, failOnSeverity)
 		},
 	}
 
@@ -96,6 +104,7 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 	cmd.Flags().StringVar(&lf.llamacppBaseURL, "llm-fallback-base-url", "", "base URL of a local llama.cpp server used as a fallback if Ollama is unavailable (disabled if empty)")
 	cmd.Flags().StringVar(&lf.llamacppModel, "llm-fallback-model", "", "model name/path to request from the llama.cpp fallback server (defaults to --llm-model)")
 	cmd.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
+	cmd.Flags().StringVar(&failOn, "fail-on", "", "exit non-zero if any finding is at or above this severity: critical|high|medium|low (default: never fail, exit 0) — for CI/git-hook gating")
 
 	return cmd
 }
@@ -203,6 +212,50 @@ func buildValidator(lf *llmFlags) (cerberus.Validator, error) {
 		PromptVersion:   "candidate_validation@1",
 		RulesVersion:    "cli-local",
 	}), nil
+}
+
+// severityRank orders Severity for --fail-on threshold comparisons —
+// higher is worse.
+var severityRank = map[cerberus.Severity]int{
+	cerberus.SeverityLow:      1,
+	cerberus.SeverityMedium:   2,
+	cerberus.SeverityHigh:     3,
+	cerberus.SeverityCritical: 4,
+}
+
+// parseFailOn validates a --fail-on flag value. An empty string means
+// "never fail" (checkFailOn always returns nil), preserving the
+// pre-existing always-exit-0 behavior for callers that don't opt in.
+func parseFailOn(s string) (cerberus.Severity, error) {
+	if s == "" {
+		return "", nil
+	}
+	sev := cerberus.Severity(strings.ToLower(s))
+	if _, ok := severityRank[sev]; !ok {
+		return "", fmt.Errorf("invalid --fail-on %q (want critical|high|medium|low)", s)
+	}
+	return sev, nil
+}
+
+// checkFailOn returns a non-nil error when at least one finding is at
+// or above threshold, so RunE's returned error drives main.go's
+// os.Exit(1) — the exit-code contract CI jobs and git hooks gate on.
+// A zero-value threshold ("") always passes.
+func checkFailOn(findings []cerberus.Finding, threshold cerberus.Severity) error {
+	if threshold == "" {
+		return nil
+	}
+	min := severityRank[threshold]
+	var n int
+	for _, f := range findings {
+		if severityRank[f.Severity] >= min {
+			n++
+		}
+	}
+	if n > 0 {
+		return fmt.Errorf("%d finding(s) at or above --fail-on=%s severity", n, threshold)
+	}
+	return nil
 }
 
 func renderFindings(ui *cliui.UI, format string, findings []cerberus.Finding) error {
