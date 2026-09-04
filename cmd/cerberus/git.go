@@ -12,13 +12,14 @@ import (
 func newGitCmd(flags *globalFlags) *cobra.Command {
 	git := &cobra.Command{Use: "git", Short: "Git repository scanning"}
 
-	var staged, history bool
+	var staged, history, unmask bool
 	var branch, commit string
 
 	scan := &cobra.Command{
-		Use:   "scan <path>",
-		Short: "Scan a Git repository (working tree, staged, commit, branch, or full history)",
-		Args:  cobra.ExactArgs(1),
+		Use:     "scan <path>",
+		Short:   "Scan a Git repository (working tree, staged, commit, branch, or full history)",
+		Example: "  cerberus git scan . --history\n  cerberus git scan . --branch main --format sarif",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mode := gitscanner.ModeWorkingTree
 			ref := ""
@@ -33,7 +34,9 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 				mode, ref = gitscanner.ModeBranch, branch
 			}
 
-			d, err := buildDetector(flags.rulesDir, nil)
+			warnUnmask(flags.UI(), unmask)
+
+			d, err := buildDetector(flags.rulesDir, nil, unmask)
 			if err != nil {
 				return err
 			}
@@ -57,13 +60,14 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 				all = append(all, findings...)
 			}
 
-			return renderFindings(flags.format, all)
+			return renderFindings(flags.UI(), flags.format, all)
 		},
 	}
 	scan.Flags().BoolVar(&staged, "staged", false, "scan staged changes only")
 	scan.Flags().BoolVar(&history, "history", false, "scan full commit history")
 	scan.Flags().StringVar(&branch, "branch", "", "scan a specific branch")
 	scan.Flags().StringVar(&commit, "commit", "", "scan a specific commit")
+	scan.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
 
 	git.AddCommand(scan)
 	return git

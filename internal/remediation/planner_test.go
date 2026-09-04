@@ -20,11 +20,12 @@ func (f fakePolicyEngine) Evaluate(context.Context, policyengine.PolicyInput) (p
 
 func testCredential() cerberus.Credential {
 	return cerberus.Credential{
-		ID:        "cred_test",
-		Provider:  "aws",
-		Kind:      "aws-access-key-id",
-		FirstSeen: time.Now().Add(-24 * time.Hour),
-		LastSeen:  time.Now(),
+		ID:          "cred_test",
+		Provider:    "aws",
+		Kind:        "aws-access-key-id",
+		Fingerprint: "AKIATESTKEY",
+		FirstSeen:   time.Now().Add(-24 * time.Hour),
+		LastSeen:    time.Now(),
 	}
 }
 
@@ -53,6 +54,22 @@ func TestPlanner_PolicyRequiresApprovals_PlanIsApprovalRequired(t *testing.T) {
 	}
 	if plan.Risk.Level != cerberus.RiskHigh {
 		t.Errorf("Risk not propagated onto Plan: got %v", plan.Risk)
+	}
+}
+
+func TestPlanner_TargetCarriesCredentialFingerprint(t *testing.T) {
+	engine := fakePolicyEngine{decision: policyengine.PolicyDecision{Allow: true}}
+	p := NewPlanner(engine)
+
+	plan, err := p.Plan(context.Background(), testCredential(), nil, "disable_access_key", "production")
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if plan.Target.KeyFingerprint != "AKIATESTKEY" {
+		t.Errorf("Target.KeyFingerprint = %q, want %q (credential.Fingerprint)", plan.Target.KeyFingerprint, "AKIATESTKEY")
+	}
+	if plan.Target.Provider != "aws" {
+		t.Errorf("Target.Provider = %q, want %q", plan.Target.Provider, "aws")
 	}
 }
 

@@ -3,6 +3,7 @@ package credentials
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
@@ -102,9 +103,13 @@ func (s *MemStore) List(_ context.Context, filter CredentialFilter) ([]cerberus.
 			continue
 		}
 		out = append(out, c)
-		if filter.Limit > 0 && len(out) >= filter.Limit {
-			break
-		}
+	}
+	// Map iteration order is randomized; sort before truncating to
+	// filter.Limit so repeated calls against the same store contents
+	// return the same page instead of an arbitrary subset.
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	if filter.Limit > 0 && len(out) > filter.Limit {
+		out = out[:filter.Limit]
 	}
 	return out, nil
 }
@@ -160,9 +165,11 @@ func (s *MemStore) ListIncidents(_ context.Context, filter IncidentFilter) ([]ce
 			continue
 		}
 		out = append(out, i)
-		if filter.Limit > 0 && len(out) >= filter.Limit {
-			break
-		}
+	}
+	// See List's comment: sort before truncating for deterministic paging.
+	sort.Slice(out, func(a, b int) bool { return out[a].ID < out[b].ID })
+	if filter.Limit > 0 && len(out) > filter.Limit {
+		out = out[:filter.Limit]
 	}
 	return out, nil
 }

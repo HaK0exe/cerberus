@@ -1,5 +1,0 @@
-{
-  "expect_findings": true,
-  "rule_id": "github-pat-fine-grained",
-  "min_confidence": 0.9
-}

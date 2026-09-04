@@ -33,6 +33,7 @@ type Detector struct {
 	minEmitBand    Band // lowest band this detector emits as a Finding on its own
 	validator      cerberus.Validator
 	rulesetVersion string // rules.Checksum(rules) — computed once at construction
+	revealSecrets  bool   // see WithRevealSecrets
 }
 
 type Option func(*Detector)
@@ -61,6 +62,17 @@ func WithMinEmitBand(b Band) Option {
 // internal/llm/circuitbreaker's ErrFallback/IsFallback.
 func WithValidator(v cerberus.Validator) Option {
 	return func(d *Detector) { d.validator = v }
+}
+
+// WithRevealSecrets makes MaskedPrefix carry the full, unredacted
+// secret value instead of a 4-character hint. Off by default: a
+// Finding's MaskedPrefix is also what ends up in --format json/sarif
+// output and any future persisted store, so this is strictly an
+// explicit, caller-opted-in trade of "print the secret so I can triage
+// it locally" against "never let a raw secret leave the process" — see
+// the --unmask flag on `scan file`/`git scan`.
+func WithRevealSecrets(reveal bool) Option {
+	return func(d *Detector) { d.revealSecrets = reveal }
 }
 
 func New(compiledRules []rules.CompiledRule, fp *policy.Fingerprinter, opts ...Option) *Detector {
@@ -193,7 +205,7 @@ func (d *Detector) Detect(ctx context.Context, artifact cerberus.Artifact) ([]ce
 				State:        cerberus.StateOpen,
 				CreatedAt:    now,
 				UpdatedAt:    now,
-				MaskedPrefix: policy.MaskedPrefix(value, 4),
+				MaskedPrefix: policy.MaskedPrefix(value, maskVisibleLen(d.revealSecrets, len(value))),
 				Length:       len(value),
 				Provenance: cerberus.DetectionProvenance{
 					DetectorVersion: version.Version,
@@ -220,6 +232,16 @@ func (d *Detector) Detect(ctx context.Context, artifact cerberus.Artifact) ([]ce
 	}
 
 	return findings, nil
+}
+
+// maskVisibleLen picks how many leading bytes of a secret value end up
+// unmasked in MaskedPrefix: the full value when secrets are being
+// revealed, otherwise the standard 4-character hint.
+func maskVisibleLen(reveal bool, valueLen int) int {
+	if reveal {
+		return valueLen
+	}
+	return 4
 }
 
 // llmScoreEpsilon keeps an LLM-adjusted score strictly below

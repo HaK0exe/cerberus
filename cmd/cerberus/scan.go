@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/HaK0exe/cerberus/internal/cliui"
 	"github.com/HaK0exe/cerberus/internal/detector"
 	"github.com/HaK0exe/cerberus/internal/llm/cache"
 	"github.com/HaK0exe/cerberus/internal/llm/circuitbreaker"
@@ -46,6 +48,7 @@ type llmFlags struct {
 
 func newScanFileCmd(flags *globalFlags) *cobra.Command {
 	lf := &llmFlags{}
+	var unmask bool
 
 	cmd := &cobra.Command{
 		Use:   "file [path...]",
@@ -55,8 +58,9 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 			if lf.enabled && flags.offline {
 				return fmt.Errorf("--llm requires --offline=false (cerberus never makes a network call, including to a local Ollama/llama.cpp server, unless you explicitly opt out of --offline)")
 			}
+			warnUnmask(flags.UI(), unmask)
 
-			d, err := buildDetector(flags.rulesDir, lf)
+			d, err := buildDetector(flags.rulesDir, lf, unmask)
 			if err != nil {
 				return err
 			}
@@ -82,7 +86,7 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 				all = append(all, findings...)
 			}
 
-			return renderFindings(flags.format, all)
+			return renderFindings(flags.UI(), flags.format, all)
 		},
 	}
 
@@ -91,6 +95,7 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 	cmd.Flags().StringVar(&lf.baseURL, "llm-base-url", ollama.DefaultBaseURL, "base URL of the local Ollama server")
 	cmd.Flags().StringVar(&lf.llamacppBaseURL, "llm-fallback-base-url", "", "base URL of a local llama.cpp server used as a fallback if Ollama is unavailable (disabled if empty)")
 	cmd.Flags().StringVar(&lf.llamacppModel, "llm-fallback-model", "", "model name/path to request from the llama.cpp fallback server (defaults to --llm-model)")
+	cmd.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
 
 	return cmd
 }
@@ -106,7 +111,7 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 // TODO(sprint-4): source a stable, persisted fingerprint key from
 // config/secret store once the API/storage layer exists — an ephemeral
 // key means fingerprints are not stable across CLI invocations.
-func buildDetector(rulesDir string, lf *llmFlags) (*detector.Detector, error) {
+func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detector, error) {
 	compiled, err := rules.LoadDir(os.DirFS("."), rulesDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading rules from %s: %w", rulesDir, err)
@@ -124,7 +129,10 @@ func buildDetector(rulesDir string, lf *llmFlags) (*detector.Detector, error) {
 		return nil, err
 	}
 
-	opts := []detector.Option{detector.WithMinEmitBand(detector.BandLowConfidence)}
+	opts := []detector.Option{
+		detector.WithMinEmitBand(detector.BandLowConfidence),
+		detector.WithRevealSecrets(unmask),
+	}
 
 	if lf != nil && lf.enabled {
 		validator, err := buildValidator(lf)
@@ -197,7 +205,8 @@ func buildValidator(lf *llmFlags) (cerberus.Validator, error) {
 	}), nil
 }
 
-func renderFindings(format string, findings []cerberus.Finding) error {
+func renderFindings(ui *cliui.UI, format string, findings []cerberus.Finding) error {
+	ui.DoneProgress()
 	switch format {
 	case "json":
 		enc := json.NewEncoder(os.Stdout)
@@ -207,17 +216,21 @@ func renderFindings(format string, findings []cerberus.Finding) error {
 		return sarif.Write(os.Stdout, findings, "cerberus", version.Version)
 	case "text", "":
 		if len(findings) == 0 {
-			fmt.Println("no findings")
+			fmt.Println(ui.Ok("✓ no findings"))
 			return nil
 		}
+		counts := map[cerberus.Severity]int{}
 		for _, f := range findings {
 			fmt.Printf("[%s] %s  %s  confidence=%.2f  %s%s\n",
-				f.Severity, f.Type, f.MaskedPrefix, f.Confidence, f.Path, commitSuffix(f.Commit))
+				ui.Severity(string(f.Severity)), f.Type, f.MaskedPrefix, f.Confidence, f.Path, commitSuffix(f.Commit))
+			counts[f.Severity]++
 		}
+		fmt.Println()
+		fmt.Println(summaryLine(len(findings), counts))
 		return nil
 	case "explain":
 		if len(findings) == 0 {
-			fmt.Println("no findings")
+			fmt.Println(ui.Ok("✓ no findings"))
 			return nil
 		}
 		for i, f := range findings {
@@ -253,6 +266,33 @@ func explainFinding(f cerberus.Finding) {
 		fmt.Printf("  llm:       %s (prompt %s)\n", f.Provenance.ModelName, f.Provenance.PromptVersion)
 	} else {
 		fmt.Printf("  llm:       none (deterministic only)\n")
+	}
+}
+
+// summaryLine renders the sqlmap/katana-style closing line: total
+// findings broken down by severity, highest severity first.
+func summaryLine(total int, counts map[cerberus.Severity]int) string {
+	order := []cerberus.Severity{cerberus.SeverityCritical, cerberus.SeverityHigh, cerberus.SeverityMedium, cerberus.SeverityLow}
+	var parts []string
+	for _, sev := range order {
+		if n := counts[sev]; n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, sev))
+		}
+	}
+	noun := "findings"
+	if total == 1 {
+		noun = "finding"
+	}
+	return fmt.Sprintf("%d %s (%s)", total, noun, strings.Join(parts, ", "))
+}
+
+// warnUnmask surfaces a one-line reminder on stderr whenever --unmask
+// is set, since it's the one flag in this CLI that puts raw secret
+// material on stdout (and therefore in scrollback, redirected files,
+// or CI logs if the caller isn't careful).
+func warnUnmask(ui *cliui.UI, unmask bool) {
+	if unmask {
+		ui.Warnf("--unmask is on: full secret values will be printed — do not use in CI or pipe to logs")
 	}
 }
 

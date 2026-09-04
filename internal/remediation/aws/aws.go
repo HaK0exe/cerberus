@@ -109,16 +109,36 @@ func (e *Executor) disableAndVerify(ctx context.Context, plan remediation.Plan) 
 		return plan, fmt.Errorf("%s", plan.Reason)
 	}
 
+	// DryRun defaults to true on every Plan DefaultPlanner builds (see
+	// remediation.Plan's doc comment) and is the last safety gate
+	// before a live IAM call: a caller must explicitly clear it to let
+	// Execute actually disable a key. Leaving it unchecked would make
+	// the field a documented-but-inert no-op.
+	if plan.DryRun {
+		plan.Reason = "aws executor: plan.DryRun is true, no live IAM call made; clear DryRun to execute for real"
+		plan.UpdatedAt = now()
+		return plan, nil
+	}
+
+	if err := requireStatusTransition(plan.Status, remediation.StatusExecuting); err != nil {
+		return plan, err
+	}
 	plan.Status = remediation.StatusExecuting
 	plan.UpdatedAt = now()
 
 	if err := e.client.UpdateAccessKey(ctx, plan.Target.AccountID, plan.Target.KeyFingerprint, KeyStatusInactive); err != nil {
+		if terr := requireStatusTransition(plan.Status, remediation.StatusFailed); terr != nil {
+			return plan, terr
+		}
 		plan.Status = remediation.StatusFailed
 		plan.Reason = fmt.Sprintf("aws executor: UpdateAccessKey failed: %v", err)
 		plan.UpdatedAt = now()
 		return plan, err
 	}
 
+	if err := requireStatusTransition(plan.Status, remediation.StatusKeyDisabled); err != nil {
+		return plan, err
+	}
 	plan.Status = remediation.StatusKeyDisabled
 	plan.Reason = "aws executor: UpdateAccessKey(Inactive) succeeded, pending verification"
 	plan.UpdatedAt = now()
@@ -126,10 +146,26 @@ func (e *Executor) disableAndVerify(ctx context.Context, plan remediation.Plan) 
 	return e.verifyOnly(ctx, plan)
 }
 
+// requireStatusTransition rejects a status assignment that the shared
+// remediation.CanTransition state machine doesn't allow, so this
+// provider can't drift from the canonical lifecycle table in
+// remediation/transition.go by hand-editing a status inline.
+func requireStatusTransition(from, to remediation.Status) error {
+	if !remediation.CanTransition(from, to) {
+		return fmt.Errorf("aws executor: illegal status transition %s -> %s", from, to)
+	}
+	return nil
+}
+
 // verifyOnly re-reads the live key status and promotes plan to
 // StatusVerified only on a confirmed match. It never calls
 // UpdateAccessKey — safe to call repeatedly on a KeyDisabled plan.
 func (e *Executor) verifyOnly(ctx context.Context, plan remediation.Plan) (remediation.Plan, error) {
+	if !e.authorizedAccountIDs[plan.Target.AccountID] {
+		plan.Reason = fmt.Sprintf("aws executor: account %q is not in the authorized remediation scope", plan.Target.AccountID)
+		return plan, fmt.Errorf("%s", plan.Reason)
+	}
+
 	status, err := e.client.GetAccessKeyStatus(ctx, plan.Target.AccountID, plan.Target.KeyFingerprint)
 	if err != nil {
 		plan.Reason = fmt.Sprintf("aws executor: verification read failed, retry later: %v", err)
@@ -143,6 +179,9 @@ func (e *Executor) verifyOnly(ctx context.Context, plan remediation.Plan) (remed
 		return plan, nil // stays KeyDisabled
 	}
 
+	if err := requireStatusTransition(plan.Status, remediation.StatusVerified); err != nil {
+		return plan, err
+	}
 	plan.Status = remediation.StatusVerified
 	plan.Reason = "aws executor: verified key is Inactive"
 	plan.UpdatedAt = now()

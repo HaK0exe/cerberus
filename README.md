@@ -63,6 +63,18 @@ go build -o bin/cerberus ./cmd/cerberus
 ./bin/cerberus scan file path/to/file.env --format json
 ```
 
+To run `cerberus` from anywhere (not just `./bin/cerberus` from the repo
+root), install it onto your `$PATH`:
+
+```bash
+make install                    # go install ./cmd/cerberus
+cerberus rules list
+```
+
+`make install` puts the binary in `go env GOBIN` (or `$(go env
+GOPATH)/bin` if GOBIN is unset) — make sure that directory is on your
+`$PATH` (e.g. `export PATH="$PATH:$(go env GOPATH)/bin"`).
+
 Everything below is on the roadmap, not yet available:
 
 ```bash

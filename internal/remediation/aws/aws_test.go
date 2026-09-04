@@ -222,6 +222,41 @@ func TestExecute_RejectsNonApprovedStatus(t *testing.T) {
 	}
 }
 
+func TestExecute_DryRunPlan_MakesNoClientCallsAndStaysApproved(t *testing.T) {
+	fake := newFakeIAM(KeyStatusActive)
+	exec := NewExecutor(fake.client(), []string{"111111111111"})
+
+	plan := approvedPlan("111111111111")
+	plan.DryRun = true
+
+	got, err := exec.Execute(context.Background(), plan)
+	if err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if got.Status != remediation.StatusApproved {
+		t.Errorf("Status = %s, want %s (dry-run must not advance the plan)", got.Status, remediation.StatusApproved)
+	}
+	if got.Reason == "" {
+		t.Error("Reason must not be empty")
+	}
+	if fake.updateCalls != 0 || fake.verifyCalls != 0 {
+		t.Errorf("expected zero IAMClient calls on a dry-run plan, got update=%d verify=%d", fake.updateCalls, fake.verifyCalls)
+	}
+
+	// Clearing DryRun on the same plan lets it execute for real.
+	plan.DryRun = false
+	got, err = exec.Execute(context.Background(), plan)
+	if err != nil {
+		t.Fatalf("Execute after clearing DryRun: %v", err)
+	}
+	if got.Status != remediation.StatusVerified {
+		t.Errorf("Status = %s, want %s", got.Status, remediation.StatusVerified)
+	}
+	if fake.updateCalls != 1 {
+		t.Errorf("UpdateAccessKey calls = %d, want 1", fake.updateCalls)
+	}
+}
+
 func TestNewExecutor_EmptyAllowlistAuthorizesNothing(t *testing.T) {
 	fake := newFakeIAM(KeyStatusActive)
 	exec := NewExecutor(fake.client(), nil)

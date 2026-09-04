@@ -118,10 +118,21 @@ func (e *NativeEngine) evaluateRemediation(input PolicyInput) PolicyDecision {
 			}
 		}
 
+		// A non-automatic rule must gate on at least one approval. A
+		// rule that sets automatic: false but leaves approvals_required
+		// unset (Go zero value 0) is a misconfiguration, not a request
+		// for automatic execution — treat it as requiring one approval
+		// rather than silently falling through to the same
+		// ApprovalsRequired == 0 result Plan() reads as "auto-approve".
+		approvalsRequired := rule.ApprovalsRequired
+		if approvalsRequired <= 0 {
+			approvalsRequired = 1
+		}
+
 		return PolicyDecision{
 			Allow:             true,
-			Reason:            fmt.Sprintf("policy requires %d approval(s) for provider %q in environment %q before remediation can execute", rule.ApprovalsRequired, provider, input.Environment),
-			ApprovalsRequired: rule.ApprovalsRequired,
+			Reason:            fmt.Sprintf("policy requires %d approval(s) for provider %q in environment %q before remediation can execute", approvalsRequired, provider, input.Environment),
+			ApprovalsRequired: approvalsRequired,
 			Attributes: map[string]string{
 				"provider":    provider,
 				"environment": input.Environment,

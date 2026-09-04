@@ -84,7 +84,16 @@ func (p *DefaultPlanner) Plan(ctx context.Context, credential cerberus.Credentia
 		CredentialID: credential.ID,
 		Provider:     credential.Provider,
 		Action:       action,
-		Target:       Target{Provider: credential.Provider},
+		// KeyFingerprint comes straight from the deduplicated
+		// Credential identity. AccountID has no source yet:
+		// cerberus.Credential doesn't carry a provider account id today
+		// (see pkg/cerberus/credential.go), so it's left empty here.
+		// That's fail-closed, not silently wrong — aws.Executor's
+		// authorizedAccountIDs allowlist rejects an empty AccountID
+		// rather than defaulting to allow, so no plan can execute
+		// against a real account until account resolution is modeled
+		// and wired through.
+		Target: Target{Provider: credential.Provider, KeyFingerprint: credential.Fingerprint},
 		Risk:         assessment,
 
 		ApprovalRequired:  decision.ApprovalsRequired > 0,
