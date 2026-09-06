@@ -300,6 +300,11 @@ func bandRank(b Band) int {
 
 func newID(prefix string) string {
 	buf := make([]byte, 8)
-	_, _ = rand.Read(buf)
+	if _, err := rand.Read(buf); err != nil {
+		// CSPRNG failure must never yield predictable all-zero IDs
+		// (collisions + guessable finding IDs). Panic: the process
+		// cannot safely mint identifiers without randomness.
+		panic("detector: crypto/rand unavailable: " + err.Error())
+	}
 	return prefix + "_" + hex.EncodeToString(buf)
 }

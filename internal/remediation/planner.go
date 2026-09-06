@@ -147,6 +147,8 @@ func Approve(plan Plan, approvalsGranted int) (Plan, error) {
 
 func newPlanID() string {
 	buf := make([]byte, 8)
-	_, _ = rand.Read(buf)
+	if _, err := rand.Read(buf); err != nil {
+		panic("remediation: crypto/rand unavailable: " + err.Error())
+	}
 	return "plan_" + hex.EncodeToString(buf)
 }

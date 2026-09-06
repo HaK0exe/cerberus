@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -129,6 +131,14 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 				warnCount++
 				ui.Debugf(format, args...)
 			}
+			if ninja {
+				// Match the TLS handshake to the chosen UA: a WAF
+				// blocking on JA3 (rather than, or in addition to,
+				// HTTP-level bot signals) sees a real browser's
+				// ClientHello instead of Go's native one. See
+				// ssrf.Guard.TLSFingerprint / ninja.go.
+				s.Guard.TLSFingerprint = webscanner.NinjaTLSHello(userAgent)
+			}
 			if proxy != "" {
 				proxyURL, err := url.Parse(proxy)
 				if err != nil {
@@ -147,6 +157,43 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 				return fmt.Errorf("scanning %s: %w", args[0], err)
 			}
 
+			// ninja suppresses Progress (it's per-request: which URL,
+			// how many so far — exactly the crawl behavior stealth
+			// mode exists to not print). But total silence for the
+			// run's whole multi-minute duration (concurrency 1,
+			// rate-limited, up to --max-pages sequential fetches) is
+			// indistinguishable from a hang. This heartbeat is the
+			// deliberately content-free middle ground: proof the
+			// process is alive, nothing about the target.
+			//
+			// stopHeartbeat is a no-op unless ninja started one, and
+			// is safe to call more than once (sync.Once): called
+			// explicitly before ui.DoneProgress below so the two
+			// never race on ui's internal state, and deferred as a
+			// backstop for any early error return in the loop.
+			stopHeartbeat := func() {}
+			if ninja {
+				stop := make(chan struct{})
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					ticker := time.NewTicker(15 * time.Second)
+					defer ticker.Stop()
+					start := time.Now()
+					for {
+						select {
+						case <-stop:
+							return
+						case <-ticker.C:
+							ui.Heartbeat("ninja crawl running — %s elapsed (quiet by design; findings print at the end)", time.Since(start).Round(time.Second))
+						}
+					}
+				}()
+				var once sync.Once
+				stopHeartbeat = func() { once.Do(func() { close(stop); <-done }) }
+			}
+			defer stopHeartbeat()
+
 			var all []cerberus.Finding
 			var fetched int
 			for artifact := range artifacts {
@@ -158,6 +205,7 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 				}
 				all = append(all, findings...)
 			}
+			stopHeartbeat()
 			ui.DoneProgress()
 
 			if warnCount > 0 {
@@ -178,7 +226,7 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 	scan.Flags().StringVar(&userAgent, "user-agent", "", "custom User-Agent (default CerberusBot)")
 	scan.Flags().StringVar(&proxy, "proxy", "", "proxy URL for all requests (http, https, or socks5, direct if empty)")
 	scan.Flags().Float64Var(&jitter, "jitter", 0, "max extra random delay in seconds between requests")
-	scan.Flags().BoolVar(&ninja, "ninja", false, "low-profile crawl: browser UA, slow irregular cadence, no robots.txt (requires --offline=false, --allowed-domains, --format json|sarif)")
+	scan.Flags().BoolVar(&ninja, "ninja", false, "low-profile crawl: browser UA + matching TLS (JA3) fingerprint, slow irregular cadence, no robots.txt (requires --offline=false, --allowed-domains, --format json|sarif)")
 	scan.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
 
 	web.AddCommand(scan)

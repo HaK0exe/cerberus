@@ -7,7 +7,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
+
+	utls "github.com/refraction-networking/utls"
 )
 
 func TestValidateIP_BlocksDefaultRanges(t *testing.T) {
@@ -223,5 +226,69 @@ func TestNewClient_AllowsNormalRequest(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	if string(body) != "ok" {
 		t.Fatalf("unexpected body %q", body)
+	}
+}
+
+func TestNewClient_TLSFingerprint_FetchesOverSpoofedHandshake(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	}))
+	defer srv.Close()
+
+	g := permissiveGuard()
+	g.TLSFingerprint = utls.HelloChrome_Auto
+	client := g.NewClient(nil)
+	// httptest.NewTLSServer signs with its own throwaway CA, which our
+	// uTLS config's default (system) RootCAs don't trust. A dial and
+	// handshake that fails on THAT — not on a connection-refused, DNS,
+	// or SSRF error — proves the fingerprinted path reached the
+	// server and ran real certificate verification.
+	_, err := client.Get(srv.URL)
+	if err == nil {
+		t.Fatal("expected a certificate error against the test server's self-signed cert (proves the fingerprinted path performed real verification)")
+	}
+}
+
+func TestNewClient_TLSFingerprint_StillBlocksSSRFTarget(t *testing.T) {
+	g := NewGuard()
+	g.TLSFingerprint = utls.HelloChrome_Auto
+	client := g.NewClient(nil)
+	_, err := client.Get("https://127.0.0.1:1/")
+	if err == nil {
+		t.Fatal("expected the loopback target to be rejected by SSRF validation even with TLS fingerprinting enabled")
+	}
+}
+
+func TestNewClient_TLSFingerprint_IgnoredWhenProxySet(t *testing.T) {
+	g := NewGuard()
+	g.TLSFingerprint = utls.HelloChrome_Auto
+	g.ProxyURL = &url.URL{Scheme: "http", Host: "127.0.0.1:0"}
+	client := g.NewClient(nil)
+	tr := client.Transport.(*http.Transport)
+	if tr.DialTLSContext != nil {
+		t.Fatal("expected DialTLSContext to be left unset when ProxyURL is set, per TLSFingerprint's documented precedence")
+	}
+}
+
+func TestValidateIP_BlocksIPv4MappedIPv6(t *testing.T) {
+	g := NewGuard()
+	// ::ffff:10.0.0.1 is 10.0.0.1 in mapped form and must be blocked.
+	if err := g.ValidateIP(net.ParseIP("::ffff:10.0.0.1")); err == nil {
+		t.Error("expected ::ffff:10.0.0.1 (mapped private IPv4) to be blocked")
+	}
+	if err := g.ValidateIP(net.ParseIP("::ffff:8.8.8.8")); err != nil {
+		t.Errorf("expected ::ffff:8.8.8.8 (mapped public IPv4) to be allowed, got %v", err)
+	}
+}
+
+func TestNewGuard_CopiesBlockedNets(t *testing.T) {
+	a := NewGuard()
+	b := NewGuard()
+	if len(a.BlockedNets) == 0 || len(a.BlockedNets) != len(b.BlockedNets) {
+		t.Fatal("expected default blocked nets to be populated")
+	}
+	a.BlockedNets[0] = nil
+	if b.BlockedNets[0] == nil {
+		t.Error("mutating one guard's BlockedNets must not affect another (shared backing array)")
 	}
 }

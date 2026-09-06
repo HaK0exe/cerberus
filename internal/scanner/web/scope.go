@@ -57,7 +57,14 @@ func (s Scope) pathExcluded(path string) bool {
 		if p == "" {
 			continue
 		}
-		if strings.HasPrefix(path, p) {
+		// Boundary-aware prefix: "/api" excludes "/api" and "/api/...",
+		// but not "/apiv2". A trailing "/" in the pattern ("api/")
+		// already implies a directory boundary.
+		if path == p {
+			return true
+		}
+		base := strings.TrimSuffix(p, "/")
+		if strings.HasPrefix(path, base+"/") {
 			return true
 		}
 	}

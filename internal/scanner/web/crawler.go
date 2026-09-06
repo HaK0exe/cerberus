@@ -94,6 +94,9 @@ func (cr *Crawler) Scan(ctx context.Context, target string, opts cerberus.ScanOp
 	}
 
 	scope := Scope{AllowedDomains: opts.AllowedDomains, ExcludePaths: opts.ExcludePaths}
+	if !scope.Allowed(start) {
+		return nil, fmt.Errorf("web scanner: start URL %s rejected by scope policy", redactedURL(start))
+	}
 
 	guard := cr.Guard
 	if guard == nil {
@@ -262,6 +265,16 @@ func (cr *Crawler) Scan(ctx context.Context, target string, opts cerberus.ScanOp
 		}
 		for _, s := range scripts {
 			if s.Inline {
+				// Dedup on content, not URL: the same bundled/inline
+				// script (a shared header/footer chunk, a vendor
+				// bundle) is commonly byte-identical across many
+				// pages, and without this it gets scanned and
+				// reported once per page it appears on — the same
+				// secret shows up dozens of times in the findings for
+				// one script.
+				if !dedup.MarkIfNew("inline:" + frontier.FingerprintURL(s.Body)) {
+					continue
+				}
 				emit(ctx, out, cerberus.Artifact{
 					ID:         canonicalOrRaw(u) + "#inline-script",
 					SourceType: cerberus.SourceWebScript,
@@ -306,7 +319,10 @@ func (cr *Crawler) Scan(ctx context.Context, target string, opts cerberus.ScanOp
 	go func() {
 		defer close(out)
 		if !claim(start) {
-			cr.warnf("web scanner: start URL %s rejected by scope/SSRF policy", redactedURL(start))
+			// Scope was already checked before launch; a claim failure
+			// here means duplicate or page-budget exhaustion on the
+			// very first URL (e.g. MaxPages <= 0 misconfiguration).
+			cr.warnf("web scanner: start URL %s rejected (duplicate or page budget exhausted)", redactedURL(start))
 			return
 		}
 		if err := c.Visit(start.String()); err != nil {

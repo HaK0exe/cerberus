@@ -18,10 +18,12 @@ const maxScriptBytes = 25 * 1024 * 1024 // 25MB
 var sourceMappingRe = regexp.MustCompile(`(?m)//[@#]\s*sourceMappingURL=(\S+)`)
 
 // jsExtension reports whether path looks like a JavaScript resource
-// by extension (.js, .mjs, .cjs), ignoring query/fragment.
+// by extension (.js, .mjs, .cjs), ignoring query/fragment. Matching is
+// case-insensitive: servers commonly serve "/APP.JS".
 func jsExtension(path string) bool {
+	lower := strings.ToLower(path)
 	for _, ext := range []string{".js", ".mjs", ".cjs"} {
-		if strings.HasSuffix(path, ext) {
+		if strings.HasSuffix(lower, ext) {
 			return true
 		}
 	}
@@ -88,6 +90,12 @@ func addLinkedScript(base *url.URL, ref string, seen map[string]bool, out *[]ext
 	if ref == "" {
 		return
 	}
+	// Non-fetchable schemes: inline data/blob maps and javascript:
+	// pseudo-URLs must never reach the SSRF-guarded fetcher.
+	lower := strings.ToLower(ref)
+	if strings.HasPrefix(lower, "data:") || strings.HasPrefix(lower, "blob:") || strings.HasPrefix(lower, "javascript:") {
+		return
+	}
 	u, err := base.Parse(ref)
 	if err != nil {
 		return
@@ -110,7 +118,9 @@ func scriptSourceMapURL(scriptURL *url.URL, body string) *url.URL {
 		return nil
 	}
 	// data: URLs are inline source maps, not a fetch target.
-	if strings.HasPrefix(m[1], "data:") {
+	// Case-insensitive like addLinkedScript above: an uppercase
+	// "DATA:..." must not reach the fetcher.
+	if strings.HasPrefix(strings.ToLower(m[1]), "data:") {
 		return nil
 	}
 	u, err := scriptURL.Parse(m[1])

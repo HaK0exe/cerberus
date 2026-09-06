@@ -1,4 +1,4 @@
-.PHONY: build install test lint fmt vet clean run-scan
+.PHONY: build install test lint fmt vet lint-full staticcheck gosec govulncheck clean run-scan
 
 BINARY := bin/cerberus
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -28,6 +28,18 @@ fmt:
 	gofmt -l .
 
 lint: vet fmt
+
+# Full CI gate (see AGENTS.md): vet + fmt + staticcheck + gosec + govulncheck.
+lint-full: vet fmt staticcheck gosec govulncheck
+
+staticcheck:
+	go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+
+gosec:
+	go run github.com/securego/gosec/v2/cmd/gosec@latest -quiet ./...
+
+govulncheck:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 clean:
 	rm -rf bin/ dist/

@@ -283,6 +283,47 @@ func TestCrawler_ExtractsInlineAndLinkedJS(t *testing.T) {
 	}
 }
 
+// TestCrawler_DedupsIdenticalInlineScriptAcrossPages guards against a
+// real duplicate-findings bug: a shared inline script (site-wide
+// header/footer bundle) that is byte-identical on every page used to
+// be re-emitted, and therefore re-scanned and re-reported, once per
+// page it appeared on — the same secret showing up dozens of times in
+// a crawl's findings.
+func TestCrawler_DedupsIdenticalInlineScriptAcrossPages(t *testing.T) {
+	const shared = `<script>var apiKey = "pub9ed160a7ce538539ffdfca487b85da12";</script>`
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `<html><body>%s<a href="/page2">next</a></body></html>`, shared)
+	})
+	mux.HandleFunc("/page2", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `<html><body>%s</body></html>`, shared)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	cr := &Crawler{Guard: permissiveTestGuard()}
+	ch, err := cr.Scan(context.Background(), srv.URL, cerberus.ScanOptions{
+		Depth: 2, MaxPages: 10, Concurrency: 1, RateLimit: 1000,
+		ScanJavaScript: true,
+	})
+	if err != nil {
+		t.Fatalf("Scan: %v", err)
+	}
+	artifacts := drain(t, ch, 5*time.Second)
+
+	var scripts int
+	for _, a := range artifacts {
+		if a.SourceType == cerberus.SourceWebScript && strings.Contains(string(a.Content), "pub9ed160a7ce538539ffdfca487b85da12") {
+			scripts++
+		}
+	}
+	if scripts != 1 {
+		t.Fatalf("expected the identical inline script to be emitted once despite appearing on 2 pages, got %d: %+v", scripts, artifacts)
+	}
+}
+
 func TestCrawler_ScanJavaScriptFalse_DisablesJSPipeline(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

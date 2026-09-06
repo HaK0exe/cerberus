@@ -6,8 +6,10 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -42,8 +44,29 @@ func LoadFile(path string) (Config, error) {
 		return Config{}, err
 	}
 	cfg := Default()
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	// Strict decoding: a typo'd key (e.g. `rule_dir`) must fail loudly
+	// rather than silently fall back to defaults.
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("parsing config: %w", err)
 	}
+	if err := cfg.Validate(); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+// Validate rejects nonsensical values early (typo'd log level, empty
+// rules dir) instead of failing obscurely mid-scan.
+func (c Config) Validate() error {
+	switch c.LogLevel {
+	case "debug", "info", "warn", "error":
+	default:
+		return fmt.Errorf("invalid log_level %q (want debug|info|warn|error)", c.LogLevel)
+	}
+	if strings.TrimSpace(c.RulesDir) == "" {
+		return fmt.Errorf("rules_dir must not be empty")
+	}
+	return nil
 }

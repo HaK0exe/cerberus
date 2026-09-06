@@ -104,7 +104,17 @@ func (s *Server) Dispatch(ctx context.Context, principal Principal, call ToolCal
 
 	result, err := tool.Handle(ctx, call.Arguments)
 	if err != nil {
+		// Post-execution audit: the pre-execution "allowed" record says
+		// the call was authorized, not that it succeeded. Without this,
+		// a crashing tool is indistinguishable from a success in the
+		// trail.
+		s.recordAudit(ctx, principal, call, "exec_error", err.Error())
 		return ToolResult{IsError: true, ErrorMessage: err.Error()}
+	}
+	if result.IsError {
+		s.recordAudit(ctx, principal, call, "exec_error", result.ErrorMessage)
+	} else {
+		s.recordAudit(ctx, principal, call, "exec_ok", "")
 	}
 	return result
 }

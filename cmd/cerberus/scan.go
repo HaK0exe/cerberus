@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -63,6 +64,9 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 			if lf.enabled && flags.offline {
 				return fmt.Errorf("--llm requires --offline=false (cerberus never makes a network call, including to a local Ollama/llama.cpp server, unless you explicitly opt out of --offline)")
 			}
+			if unmask && (flags.format == "json" || flags.format == "sarif") {
+				return fmt.Errorf("--unmask cannot be combined with --format %q (raw secret material must never land in machine-readable output persisted to files/CI logs); use --format text|explain for local triage", flags.format)
+			}
 			warnUnmask(flags.UI(), unmask)
 
 			d, err := buildDetector(flags.rulesDir, lf, unmask)
@@ -109,17 +113,19 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 	return cmd
 }
 
-// buildDetector wires up a Detector against a rules directory using an
-// ephemeral, process-local fingerprint key, and — when lf.enabled — the
-// optional Sprint 3 LLM review stage for the llm_review band (see
-// internal/llm/pipeline and docs/architecture/overview.md's "Detection
-// pipeline"). A nil/disabled lf preserves the pre-Sprint-3 behavior
-// exactly: no Validator is wired in, and the detector never makes an
-// outbound call.
+// buildDetector wires up a Detector against a rules directory using a
+// stable fingerprint key when one is configured (see loadFingerprintKey),
+// falling back to an ephemeral, process-local key otherwise, and — when
+// lf.enabled — the optional Sprint 3 LLM review stage for the llm_review
+// band (see internal/llm/pipeline and docs/architecture/overview.md's
+// "Detection pipeline"). A nil/disabled lf preserves the pre-Sprint-3
+// behavior exactly: no Validator is wired in, and the detector never
+// makes an outbound call.
 //
-// TODO(sprint-4): source a stable, persisted fingerprint key from
-// config/secret store once the API/storage layer exists — an ephemeral
-// key means fingerprints are not stable across CLI invocations.
+// An ephemeral key means fingerprints are NOT stable across CLI
+// invocations: set CERBERUS_FINGERPRINT_KEY (hex or raw, >=16 bytes) or
+// CERBERUS_FINGERPRINT_KEY_FILE (path to a file holding the key) for
+// stable dedup/correlation across runs.
 func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detector, error) {
 	compiled, err := rules.LoadDir(os.DirFS("."), rulesDir)
 	if err != nil {
@@ -129,9 +135,12 @@ func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detect
 		return nil, fmt.Errorf("no rules loaded from %s", rulesDir)
 	}
 
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		return nil, fmt.Errorf("generating fingerprint key: %w", err)
+	key, stable, err := loadFingerprintKey()
+	if err != nil {
+		return nil, err
+	}
+	if !stable {
+		fmt.Fprintln(os.Stderr, "warning: no fingerprint key configured (CERBERUS_FINGERPRINT_KEY[_FILE]); using an ephemeral key — finding fingerprints will differ on every run")
 	}
 	fp, err := policy.NewFingerprinter(key)
 	if err != nil {
@@ -152,6 +161,44 @@ func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detect
 	}
 
 	return detector.New(compiled, fp, opts...), nil
+}
+
+// loadFingerprintKey returns the HMAC fingerprint key and whether it is
+// stable across invocations. Precedence:
+//  1. CERBERUS_FINGERPRINT_KEY_FILE — file whose raw content is the key
+//     (trailing newline trimmed).
+//  2. CERBERUS_FINGERPRINT_KEY — hex-decoded if it looks like hex,
+//     otherwise used as raw bytes.
+//  3. Ephemeral 32B from crypto/rand (stable=false).
+//
+// Keys shorter than 16 bytes are rejected: fail closed rather than
+// silently fingerprinting with a weak key.
+func loadFingerprintKey() ([]byte, bool, error) {
+	if path := strings.TrimSpace(os.Getenv("CERBERUS_FINGERPRINT_KEY_FILE")); path != "" {
+		raw, err := os.ReadFile(path) // #nosec G304,G703 -- path is an operator-supplied key file
+		if err != nil {
+			return nil, false, fmt.Errorf("reading fingerprint key file: %w", err)
+		}
+		key := []byte(strings.TrimRight(string(raw), "\r\n"))
+		if len(key) < 16 {
+			return nil, false, fmt.Errorf("fingerprint key file holds only %d bytes (need >=16)", len(key))
+		}
+		return key, true, nil
+	}
+	if v := os.Getenv("CERBERUS_FINGERPRINT_KEY"); v != "" {
+		if decoded, err := hex.DecodeString(strings.TrimSpace(v)); err == nil && len(decoded) >= 16 {
+			return decoded, true, nil
+		}
+		if len(v) >= 16 {
+			return []byte(v), true, nil
+		}
+		return nil, false, fmt.Errorf("CERBERUS_FINGERPRINT_KEY too short (need >=16 bytes raw or >=32 hex chars)")
+	}
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return nil, false, fmt.Errorf("generating fingerprint key: %w", err)
+	}
+	return key, false, nil
 }
 
 // buildValidator composes the LLM validator stack described in

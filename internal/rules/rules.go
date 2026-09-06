@@ -28,6 +28,7 @@ type CompiledRule struct {
 // list of rules.
 func LoadDir(fsys fs.FS, dir string) ([]CompiledRule, error) {
 	var out []CompiledRule
+	seen := make(map[string]string)
 
 	err := fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -56,6 +57,10 @@ func LoadDir(fsys fs.FS, dir string) ([]CompiledRule, error) {
 			if err != nil {
 				return fmt.Errorf("compiling rule %q in %s: %w", r.ID, path, err)
 			}
+			if prev, dup := seen[r.ID]; dup {
+				return fmt.Errorf("duplicate rule id %q (in %s and %s)", r.ID, prev, path)
+			}
+			seen[r.ID] = path
 			out = append(out, compiled)
 		}
 		return nil
@@ -63,6 +68,9 @@ func LoadDir(fsys fs.FS, dir string) ([]CompiledRule, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Deterministic emission order: WalkDir order is filesystem-dependent
+	// for generic fs.FS, so sort by ID for stable detection output.
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }
 
@@ -96,9 +104,23 @@ func compile(r cerberus.Rule) (CompiledRule, error) {
 	if r.ID == "" {
 		return CompiledRule{}, fmt.Errorf("rule missing id")
 	}
+	if r.Regex == "" {
+		return CompiledRule{}, fmt.Errorf("rule %q: empty regex", r.ID)
+	}
+	if r.Confidence < 0 || r.Confidence > 1 {
+		return CompiledRule{}, fmt.Errorf("rule %q: confidence %.4f out of range [0,1]", r.ID, r.Confidence)
+	}
+	switch r.Severity {
+	case cerberus.SeverityLow, cerberus.SeverityMedium, cerberus.SeverityHigh, cerberus.SeverityCritical:
+	default:
+		return CompiledRule{}, fmt.Errorf("rule %q: unknown severity %q", r.ID, r.Severity)
+	}
 	pattern, err := regexp.Compile(r.Regex)
 	if err != nil {
 		return CompiledRule{}, fmt.Errorf("invalid regex: %w", err)
+	}
+	if r.SecretGroup < 0 || r.SecretGroup > pattern.NumSubexp() {
+		return CompiledRule{}, fmt.Errorf("rule %q: secret_group %d out of range [0,%d] for regex with %d capture groups", r.ID, r.SecretGroup, pattern.NumSubexp(), pattern.NumSubexp())
 	}
 	return CompiledRule{Rule: r, Pattern: pattern}, nil
 }
