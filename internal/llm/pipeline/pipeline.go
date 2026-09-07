@@ -195,6 +195,12 @@ type cachingValidator struct {
 
 var _ cerberus.Validator = (*cachingValidator)(nil)
 
+// maxCachedVerdicts bounds the in-process verdict map. The presence cache
+// (llm.Cache) already has its own TTL, but results holds the actual
+// verdicts with no eviction — without a cap a long-running worker would
+// grow it without bound. Resetting is safe (just re-validates).
+const maxCachedVerdicts = 10000
+
 func (c *cachingValidator) Validate(ctx context.Context, input cerberus.ValidationInput) (cerberus.ValidationResult, error) {
 	key := c.keys.Derive(llm.CacheKeyInput{
 		CandidateFingerprint: candidateProxy(input),
@@ -222,6 +228,11 @@ func (c *cachingValidator) Validate(ctx context.Context, input cerberus.Validati
 	}
 
 	c.mu.Lock()
+	if len(c.results) >= maxCachedVerdicts {
+		// Bound memory on long runs; evicted entries are simply
+		// re-validated on next sighting.
+		c.results = make(map[string]cerberus.ValidationResult, maxCachedVerdicts)
+	}
 	c.results[key] = result
 	c.mu.Unlock()
 	_ = c.cache.Set(ctx, key, c.ttlSeconds)

@@ -25,9 +25,9 @@ cerberus mcp call --tool cerberus_list_credentials --correlate correlated.json -
 
 ## What does NOT run
 
-- No `cerberus-api`/`cerberus-worker`/`cerberus-mcp` process — those
-  binaries are Sprint 4 stubs today regardless of profile (see
-  `deploy/docker/README.md`).
+- No `cerberus-api` or `cerberus-worker` process; those binaries remain
+  Sprint 4 stubs. The standalone `cerberus-mcp` stdio process works,
+  but it is launched by an MCP client rather than kept as a daemon.
 - No Postgres/DynamoDB — `internal/storage` has no backend implemented
   yet; every store used by the CLI today (`internal/findings.MemStore`,
   `internal/credentials.MemStore`) is in-memory, scoped to one process
@@ -61,12 +61,9 @@ to the deterministic score, never blocks the scan.
 
 ## Fingerprint key stability
 
-`cmd/cerberus/scan.go`'s `buildDetector` generates a fresh random HMAC
-fingerprint key per invocation (see its own doc comment,
-`TODO(sprint-4)`) — this means the same secret scanned twice in two
-separate CLI invocations gets two *different* fingerprints today, so
-cross-invocation deduplication (`cerberus correlate` across multiple
-scans) only works within a single findings JSON file produced by one
-scan, not across separately-run scans. A stable key needs a persisted
-secret store, which is Sprint 4/TEAM-profile work — see
-[team.md](team.md).
+Without configuration, `buildDetector` generates a fresh random HMAC
+fingerprint key per invocation. Set `CERBERUS_FINGERPRINT_KEY` to at
+least 16 raw bytes (or 32 hexadecimal characters), or set
+`CERBERUS_FINGERPRINT_KEY_FILE` to a protected file containing that
+key, when fingerprints must remain stable across scans. Never commit
+the key or place it in a findings document.

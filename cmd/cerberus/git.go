@@ -41,7 +41,7 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 
 			warnUnmask(flags.UI(), unmask)
 
-			d, err := buildDetector(flags.rulesDir, nil, unmask)
+			d, err := buildDetector(flags.rulesDir, nil, unmask, flags.UI())
 			if err != nil {
 				return err
 			}

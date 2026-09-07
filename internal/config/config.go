@@ -6,6 +6,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -24,7 +25,7 @@ type Config struct {
 
 func Default() Config {
 	return Config{
-		RulesDir: "rules",
+		RulesDir: "builtin",
 		LogLevel: "info",
 		Offline:  true,
 	}
@@ -42,8 +43,13 @@ func LoadFile(path string) (Config, error) {
 		return Config{}, err
 	}
 	cfg := Default()
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("parsing config: %w", err)
+	}
+	if cfg.LogLevel != "debug" && cfg.LogLevel != "info" && cfg.LogLevel != "warn" && cfg.LogLevel != "error" {
+		return Config{}, fmt.Errorf("invalid log_level %q", cfg.LogLevel)
 	}
 	return cfg, nil
 }

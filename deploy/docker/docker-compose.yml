@@ -1,9 +1,9 @@
 # Cerberus TEAM profile — see docs/deployment/team.md for the full
 # picture. Read that file before running this: as of this writing,
-# `cerberus-api`, `cerberus-worker`, and `cerberus-mcp` (cmd/cerberus-api,
-# cmd/cerberus-worker, cmd/cerberus-mcp) are Sprint 4 stub binaries that
-# print a message and os.Exit(1) immediately — they build and the
-# containers below will start, but the process inside exits right away.
+# `cerberus-api` and `cerberus-worker` are Sprint 4 stub binaries that
+# print a message and os.Exit(1) immediately. `cerberus-mcp` has a real
+# stdio transport, but Compose does not provide the persistent stores or
+# client stdio session needed to operate it as a network service.
 # `postgres` is provisioned here but internal/storage has no
 # DynamoDB/Postgres/SQLite implementation yet, so nothing in this repo
 # writes to it today. This compose file exists to have the intended
@@ -92,9 +92,8 @@ services:
       postgres: { condition: service_healthy }
     networks: [cerberus-internal]
 
-  # STUB BINARY — see the file-level comment above. internal/mcp's tool
-  # pipeline (Server.Dispatch) is real and tested; no stdio/HTTP
-  # transport is wired to cmd/cerberus-mcp yet (docs/adr/0009-mcp-v2.md).
+  # STDIO-ONLY — the transport is real, but Compose does not attach an
+  # MCP client to the process and no HTTP transport is available.
   cerberus-mcp:
     build:
       context: ../..

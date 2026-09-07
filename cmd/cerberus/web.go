@@ -8,7 +8,6 @@ import (
 
 	"github.com/HaK0exe/cerberus/internal/cliui"
 	webscanner "github.com/HaK0exe/cerberus/internal/scanner/web"
-	"github.com/HaK0exe/cerberus/internal/scanner/web/ssrf"
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
 )
 
@@ -28,6 +27,9 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ui := flags.UI()
+			if proxy != "" {
+				return fmt.Errorf("--proxy is disabled: proxy-side DNS resolution cannot satisfy Cerberus's mandatory dial-time SSRF validation")
+			}
 			if ninja {
 				if flags.offline {
 					return fmt.Errorf("--ninja requires --offline=false (web scan makes outbound network calls by design)")
@@ -114,7 +116,7 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 
 			warnUnmask(ui, unmask)
 
-			d, err := buildDetector(flags.rulesDir, nil, unmask)
+			d, err := buildDetector(flags.rulesDir, nil, unmask, ui)
 			if err != nil {
 				return err
 			}
@@ -129,19 +131,14 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 				warnCount++
 				ui.Debugf(format, args...)
 			}
-			if proxy != "" {
-				proxyURL, err := url.Parse(proxy)
-				if err != nil {
-					return fmt.Errorf("invalid --proxy %q: %w", proxy, err)
-				}
-				if proxyURL.Scheme != "http" && proxyURL.Scheme != "https" && proxyURL.Scheme != "socks5" {
-					return fmt.Errorf("invalid --proxy %q: scheme must be http, https, or socks5", proxy)
-				}
-				ui.Warnf("routing every request through proxy %s — the SSRF private-range guard no longer applies to the target (the proxy resolves it, not this process)", proxyURL.Redacted())
-				s.Guard = ssrf.NewGuard()
-				s.Guard.ProxyURL = proxyURL
+			if ninja {
+				// Match the TLS handshake to the chosen UA: a WAF
+				// blocking on JA3 (rather than, or in addition to,
+				// HTTP-level bot signals) sees a real browser's
+				// ClientHello instead of Go's native one. See
+				// ssrf.Guard.TLSFingerprint / ninja.go.
+				s.Guard.TLSFingerprint = webscanner.NinjaTLSHello(userAgent)
 			}
-
 			artifacts, err := s.Scan(cmd.Context(), args[0], opts)
 			if err != nil {
 				return fmt.Errorf("scanning %s: %w", args[0], err)
@@ -176,7 +173,7 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 	scan.Flags().BoolVar(&ignoreRobots, "ignore-robots", false, "ignore robots.txt (explicit opt-in, prints a warning)")
 	scan.Flags().BoolVar(&scanJS, "javascript", true, "download and scan linked JavaScript")
 	scan.Flags().StringVar(&userAgent, "user-agent", "", "custom User-Agent (default CerberusBot)")
-	scan.Flags().StringVar(&proxy, "proxy", "", "proxy URL for all requests (http, https, or socks5, direct if empty)")
+	scan.Flags().StringVar(&proxy, "proxy", "", "reserved; currently rejected because proxy DNS cannot preserve the SSRF invariant")
 	scan.Flags().Float64Var(&jitter, "jitter", 0, "max extra random delay in seconds between requests")
 	scan.Flags().BoolVar(&ninja, "ninja", false, "low-profile crawl: browser UA, slow irregular cadence, no robots.txt (requires --offline=false, --allowed-domains, --format json|sarif)")
 	scan.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")

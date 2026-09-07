@@ -52,10 +52,10 @@ go run ./cmd/cerberus rules test <rule-id> "<sample text>"
 Before opening a PR for a new rule:
 
 1. Add at least one true-positive sample to
-   `testdata/corpus/true-positives/`.
+   `testdata/corpus/true_positive/`.
 2. If the pattern is prone to noise (generic keywords, moderate
    entropy), add at least one realistic false-positive sample to
-   `testdata/corpus/false-positives/` (e.g. a UUID, a test fixture, a
+   `testdata/corpus/false_positive/` (e.g. a UUID, a test fixture, a
    documentation example) and confirm it scores below
    `ThresholdFinding`.
 3. Run `go test ./internal/detector/...` to confirm nothing regresses.

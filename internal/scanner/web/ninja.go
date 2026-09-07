@@ -20,6 +20,8 @@ import (
 	"net/url"
 	"strings"
 
+	utls "github.com/refraction-networking/utls"
+
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
 )
 
@@ -59,6 +61,20 @@ func NinjaUserAgent() string {
 		return ninjaUserAgents[0]
 	}
 	return ninjaUserAgents[n.Int64()]
+}
+
+// NinjaTLSHello returns the uTLS ClientHelloID matching userAgent's
+// browser, so the TLS handshake (see ssrf.Guard.TLSFingerprint) and
+// the HTTP User-Agent tell the same story. A WAF that cross-checks
+// JA3 against User-Agent — a real, if less common, bot-management
+// signal — would otherwise catch a Firefox UA arriving over a Chrome
+// ClientHello (or Go's native, browser-less one). Defaults to Chrome's
+// profile for any UA not recognized as Firefox.
+func NinjaTLSHello(userAgent string) utls.ClientHelloID {
+	if strings.Contains(userAgent, "Firefox/") {
+		return utls.HelloFirefox_Auto
+	}
+	return utls.HelloChrome_Auto
 }
 
 // NinjaHeaders stamps browser-like headers onto req in place:

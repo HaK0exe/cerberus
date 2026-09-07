@@ -47,7 +47,13 @@ func (c *robotsCache) allowed(u *url.URL) bool {
 	if !cached {
 		data = c.fetch(u)
 		c.mu.Lock()
-		c.data[u.Host] = data
+		// Bound the per-host cache: a crawl over attacker-influenced
+		// hostnames (redirect chains, link farms) must not grow this
+		// map without limit. If full, serve this host's data without
+		// storing it.
+		if len(c.data) < maxRobotsHosts {
+			c.data[u.Host] = data
+		}
 		c.mu.Unlock()
 	}
 
@@ -99,3 +105,6 @@ func (c *robotsCache) fetch(u *url.URL) *robotstxt.RobotsData {
 }
 
 const maxRobotsBytes = 512 * 1024
+
+// maxRobotsHosts bounds the per-host robots.txt cache. See allowed().
+const maxRobotsHosts = 1024

@@ -1,16 +1,18 @@
 # Remediation security model
 
-**Status: planned for Sprint 5** (`internal/remediation/aws`). See
-[ADR-0003](../adr/0003-remediation-separation.md) for the architectural
-rationale; this document covers the operational controls.
+**Status: partially implemented.** Planning, the state machine, and a
+tested AWS executor contract exist, but no real AWS SDK adapter,
+approval service, or CLI execution path is wired. See [ADR-0003](../adr/0003-remediation-separation.md)
+for the architectural rationale; this document defines the controls
+required before execution may be enabled.
 
 ## Defaults
 
 - `remediation.dry_run = true` — every plan is dry-run unless a human
   explicitly overrides it.
-- `cerberus remediation apply <plan-id>` requires an explicit `--apply`
-  flag *and* a plan already in `StatusApproved` — neither alone is
-  sufficient.
+- `cerberus remediation apply <plan-id>` currently refuses all real
+  execution. When enabled, it must require both an explicit `--apply`
+  flag and a plan already in `StatusApproved`.
 - `ApprovalRequired` defaults to `true` on every generated `Plan`.
 
 ## Approval

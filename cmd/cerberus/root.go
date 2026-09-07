@@ -93,7 +93,7 @@ func newRootCmd() *cobra.Command {
 		Short:         "Cerberus — secret detection, qualification, and controlled remediation",
 		Example:       "  cerberus scan file .env\n  cerberus git scan . --format json\n  cerberus web scan https://example.com -v",
 		SilenceUsage:  true,
-		SilenceErrors: false,
+		SilenceErrors: true,
 		Version:       version.Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := flags.loadConfig(cmd); err != nil {
@@ -109,7 +109,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&flags.logLevel, "log-level", "info", "log level: debug|info|warn|error")
 	root.PersistentFlags().BoolVar(&flags.quiet, "quiet", false, "suppress all diagnostic output (banner, warnings, progress)")
 	root.PersistentFlags().BoolVar(&flags.offline, "offline", true, "never make outbound network calls (default: on)")
-	root.PersistentFlags().StringVar(&flags.rulesDir, "rules-dir", "rules", "directory containing rule YAML files")
+	root.PersistentFlags().StringVar(&flags.rulesDir, "rules-dir", defaultRulesDir, "directory containing rule YAML files (default: embedded built-in rules)")
 	root.PersistentFlags().CountVarP(&flags.verbose, "verbose", "v", "increase diagnostic verbosity (-v progress, -vv per-request debug)")
 	root.PersistentFlags().BoolVar(&flags.noColor, "no-color", false, "disable colored output")
 

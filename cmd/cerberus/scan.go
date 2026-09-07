@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,9 +18,7 @@ import (
 	"github.com/HaK0exe/cerberus/internal/llm/llamacpp"
 	"github.com/HaK0exe/cerberus/internal/llm/ollama"
 	"github.com/HaK0exe/cerberus/internal/llm/pipeline"
-	"github.com/HaK0exe/cerberus/internal/llm/prompt"
 	"github.com/HaK0exe/cerberus/internal/policy"
-	"github.com/HaK0exe/cerberus/internal/rules"
 	"github.com/HaK0exe/cerberus/internal/sarif"
 	"github.com/HaK0exe/cerberus/internal/version"
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
@@ -65,7 +64,7 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 			}
 			warnUnmask(flags.UI(), unmask)
 
-			d, err := buildDetector(flags.rulesDir, lf, unmask)
+			d, err := buildDetector(flags.rulesDir, lf, unmask, flags.UI())
 			if err != nil {
 				return err
 			}
@@ -117,11 +116,12 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 // exactly: no Validator is wired in, and the detector never makes an
 // outbound call.
 //
-// TODO(sprint-4): source a stable, persisted fingerprint key from
-// config/secret store once the API/storage layer exists — an ephemeral
-// key means fingerprints are not stable across CLI invocations.
-func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detector, error) {
-	compiled, err := rules.LoadDir(os.DirFS("."), rulesDir)
+// An ephemeral key means fingerprints are NOT stable across CLI
+// invocations: set CERBERUS_FINGERPRINT_KEY (hex or raw, >=16 bytes) or
+// CERBERUS_FINGERPRINT_KEY_FILE (path to a file holding the key) for
+// stable dedup/correlation across runs.
+func buildDetector(rulesDir string, lf *llmFlags, unmask bool, ui *cliui.UI) (*detector.Detector, error) {
+	compiled, err := loadRules(rulesDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading rules from %s: %w", rulesDir, err)
 	}
@@ -129,9 +129,12 @@ func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detect
 		return nil, fmt.Errorf("no rules loaded from %s", rulesDir)
 	}
 
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		return nil, fmt.Errorf("generating fingerprint key: %w", err)
+	key, stable, err := loadFingerprintKey()
+	if err != nil {
+		return nil, err
+	}
+	if !stable {
+		ui.Warnf("no fingerprint key configured (CERBERUS_FINGERPRINT_KEY[_FILE]); using an ephemeral key — finding fingerprints will differ on every run")
 	}
 	fp, err := policy.NewFingerprinter(key)
 	if err != nil {
@@ -154,6 +157,34 @@ func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detect
 	return detector.New(compiled, fp, opts...), nil
 }
 
+func loadFingerprintKey() ([]byte, bool, error) {
+	if path := strings.TrimSpace(os.Getenv("CERBERUS_FINGERPRINT_KEY_FILE")); path != "" {
+		raw, err := os.ReadFile(path) // #nosec G304,G703 -- operator-supplied key file
+		if err != nil {
+			return nil, false, fmt.Errorf("reading fingerprint key file: %w", err)
+		}
+		key := []byte(strings.TrimRight(string(raw), "\r\n"))
+		if len(key) < 16 {
+			return nil, false, fmt.Errorf("fingerprint key file holds only %d bytes (need >=16)", len(key))
+		}
+		return key, true, nil
+	}
+	if v := os.Getenv("CERBERUS_FINGERPRINT_KEY"); v != "" {
+		if decoded, err := hex.DecodeString(strings.TrimSpace(v)); err == nil && len(decoded) >= 16 {
+			return decoded, true, nil
+		}
+		if len(v) >= 16 {
+			return []byte(v), true, nil
+		}
+		return nil, false, fmt.Errorf("CERBERUS_FINGERPRINT_KEY too short (need >=16 bytes raw or >=32 hex chars)")
+	}
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return nil, false, fmt.Errorf("generating fingerprint key: %w", err)
+	}
+	return key, false, nil
+}
+
 // buildValidator composes the LLM validator stack described in
 // internal/llm/pipeline's doc comment: Ollama as the primary backend,
 // optionally a llama.cpp server as a fallback, each wrapped in its own
@@ -161,7 +192,7 @@ func buildDetector(rulesDir string, lf *llmFlags, unmask bool) (*detector.Detect
 // response cache. It is only ever called when the caller has opted in
 // via --llm (and --offline=false).
 func buildValidator(lf *llmFlags) (cerberus.Validator, error) {
-	prompts, err := prompt.LoadDir(os.DirFS("."), "prompts")
+	prompts, err := loadPrompts()
 	if err != nil {
 		return nil, fmt.Errorf("loading LLM prompt templates: %w", err)
 	}

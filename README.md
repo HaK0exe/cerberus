@@ -5,11 +5,10 @@ safely remediating exposed secrets — across Git repositories and
 history, websites, JavaScript bundles, text artifacts, and CI/CD
 pipelines.
 
-> **Status: pre-alpha / active scaffolding.** The detection engine
-> (`cerberus scan file`) works end-to-end. Git/web scanning, LLM
-> validation, the cloud control plane, MCP server, and AWS remediation
-> are being built sprint by sprint — see [Roadmap](#roadmap) and the
-> [issue tracker](../../issues).
+> **Status: alpha.** Local file, Git/history, web/JavaScript scanning,
+> optional local-LLM review, and the scoped MCP stdio transport work.
+> The HTTP API, distributed workers, persistent cloud storage, and
+> execution of remediation are not implemented yet.
 
 ```bash
 $ cerberus scan file .env
@@ -51,7 +50,7 @@ See [`docs/architecture/`](docs/architecture) for the full design and
 
 ## Quick start
 
-Requires Go 1.25+.
+Requires Go 1.27+.
 
 ```bash
 git clone https://github.com/HaK0exe/cerberus.git
@@ -90,7 +89,9 @@ Repeated flags (`--rules-dir`, `--log-level`, `--offline`) can be set
 once per project in a `.cerberus.yaml` (or `.cerberus.yml`) file in
 the current directory, auto-discovered on every run — or pass
 `--config path/to/file.yaml` explicitly. A CLI flag always overrides
-the config file, which always overrides the built-in default.
+the config file, which always overrides the embedded ruleset. Use
+`rules_dir: builtin` explicitly to select that embedded ruleset from a
+config file; any other relative or absolute path loads custom rules.
 
 ```yaml
 # .cerberus.yaml
@@ -107,7 +108,7 @@ them meet or exceed that severity — the exit-code contract CI and
 scripts gate on (never use `--offline=false` in CI unless you mean it).
 
 ```bash
-cerberus scan file . --fail-on high
+cerberus git scan . --fail-on high
 cerberus git scan . --staged --fail-on high
 ```
 
@@ -147,11 +148,11 @@ cmd/                 binaries: cerberus (CLI), cerberus-api, cerberus-worker, ce
 pkg/cerberus/         stable public domain types & interfaces (Artifact, Finding, Rule, Detector, Validator...)
 internal/detector/    regex + entropy + context scoring engine
 internal/rules/       rule loader/compiler
-internal/scanner/     git + web scanners (contracts now, implementations in Sprint 2)
+internal/scanner/     Git/history and SSRF-hardened web/JavaScript scanners
 internal/credentials/ Credential/Exposure/Incident correlation (dedups findings sharing a fingerprint)
-internal/llm/         local LLM validator contracts (Ollama/llama.cpp — Sprint 3)
-internal/remediation/ remediation plan/approval/execution contracts (AWS — Sprint 5)
-internal/mcp/         MCP server (Sprint 4)
+internal/llm/         optional local Ollama/llama.cpp validation pipeline
+internal/remediation/ remediation planning and provider executor contracts
+internal/mcp/         scoped MCP tool pipeline and stdio server
 internal/policy/      fingerprinting, masking, secret-lifecycle helpers
 internal/audit/       append-only audit trail
 rules/                declarative YAML detection rules, organized by provider family
@@ -217,9 +218,9 @@ Found a vulnerability? Please **do not** open a public issue — see
 |---|---|---|
 | 0 | Repository bootstrap | ✅ done |
 | 1 | Detection engine (`cerberus scan file`) | ✅ done |
-| 2 | Git + web scanners, distributed queue | ⏳ next |
-| 3 | Local LLM validation (Ollama/llama.cpp) | planned |
-| 4 | Cloud control plane (AWS) + MCP server | planned |
+| 2 | Git + web scanners, distributed queue | ✅ done |
+| 3 | Local LLM validation (Ollama/llama.cpp) | ✅ done |
+| 4 | Cloud control plane (AWS) + MCP server | in progress |
 | 5 | AWS auto-remediation + hardening | planned |
 | 6 | Production hardening + v1.0 launch | planned |
 

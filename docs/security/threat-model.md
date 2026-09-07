@@ -35,6 +35,8 @@ MCP/cloud in Sprint 4, remediation in Sprint 5).
 | Prompt injection via scanned content | LLM never sovereign, sanitized input, no tools/network | [ADR-0002](../adr/0002-llm-non-sovereign.md) |
 | Detector bug escalating to remediation | Architectural + IAM separation | [ADR-0003](../adr/0003-remediation-separation.md) |
 | SSRF / cloud metadata access via crawler | Mandatory DNS+IP validation before and after every redirect; block RFC1918/loopback/link-local/`169.254.169.254` | [`ssrf.md`](ssrf.md) (Sprint 2) |
+| Proxy bypass of dial-time SSRF validation | CLI proxy use is rejected until proxy-side resolution can preserve the same invariant | [`ssrf.md`](ssrf.md) |
+| Low-profile crawling used outside an authorized assessment | `--ninja` is explicit, domain-allowlisted, bounded, rate-limited, and documented for authorized targets only | [`ssrf.md`](ssrf.md) |
 | Compromised/malicious MCP agent | Scoped permissions, `cerberus_execute_remediation` isolated, approval required | [`../mcp/permissions.md`](../mcp/permissions.md) (Sprint 4) |
 | Abusive/accidental remediation | Dry-run default, human approval, idempotency, rate limits | [`remediation.md`](remediation.md) (Sprint 5) |
 | Supply-chain compromise | Pinned deps, SBOM, signed releases, `govulncheck`/`gosec` in CI | [`../development/release-process.md`](../development/release-process.md) (Sprint 6) |

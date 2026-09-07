@@ -1,0 +1,76 @@
+version: 2
+
+project_name: cerberus
+
+builds:
+  - id: cerberus
+    main: ./cmd/cerberus
+    binary: cerberus
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/HaK0exe/cerberus/internal/version.Version={{.Version}}
+      - -X github.com/HaK0exe/cerberus/internal/version.Commit={{.Commit}}
+      - -X github.com/HaK0exe/cerberus/internal/version.BuildDate={{.Date}}
+
+archives:
+  - ids: [cerberus]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - id: spdx
+    artifacts: archive
+    documents:
+      - "${artifact}.spdx.json"
+  - id: cyclonedx
+    artifacts: archive
+    documents:
+      - "${artifact}.cyclonedx.json"
+    args:
+      - "${artifact}"
+      - --output
+      - "cyclonedx-json=${document}"
+
+signs:
+  - id: checksums-keyless
+    cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - --yes
+    artifacts: checksum
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+release:
+  prerelease: auto

@@ -2,7 +2,7 @@
 # cerberus-api is not implemented yet (Sprint 4) — this Dockerfile
 # builds the current stub binary so the image pipeline exists ahead of
 # the implementation.
-FROM golang:1.25-bookworm AS build
+FROM golang:1.27-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -18,7 +17,7 @@ func newRulesCmd(flags *globalFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List loaded rules",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			compiled, err := rules.LoadDir(os.DirFS("."), flags.rulesDir)
+			compiled, err := loadRules(flags.rulesDir)
 			if err != nil {
 				return err
 			}
@@ -36,7 +35,7 @@ func newRulesCmd(flags *globalFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ruleID, sample := args[0], args[1]
 
-			compiled, err := rules.LoadDir(os.DirFS("."), flags.rulesDir)
+			compiled, err := loadRules(flags.rulesDir)
 			if err != nil {
 				return err
 			}

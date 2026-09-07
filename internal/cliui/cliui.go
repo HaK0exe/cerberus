@@ -167,6 +167,23 @@ func (u *UI) endProgress() {
 // a crawl finishes) without printing anything in its place.
 func (u *UI) DoneProgress() { u.endProgress() }
 
+// Heartbeat prints a single liveness line to stderr — proof the
+// process hasn't hung, nothing more. Unlike Progress/Warnf/Infof it
+// is NOT gated by Level: it exists specifically for LevelQuiet modes
+// (e.g. --ninja) where every other diagnostic is intentionally
+// suppressed because it could reveal per-request crawl behavior
+// (which URL, how many so far, timing). A heartbeat carries none of
+// that — just "still here" — so it's safe to keep even when
+// everything else goes silent. Still gated on stderr being a real
+// terminal, so it never litters a pipe, log file, or CI run.
+func (u *UI) Heartbeat(format string, args ...any) {
+	if !isTerminal(u.Err) {
+		return
+	}
+	fmt.Fprintf(u.Err, "\r\x1b[K"+u.colorize(gray, "[*] ")+format, args...)
+	u.progressActive = true
+}
+
 const banner = `
    ______           __  ,__
   / ____/__  _____ / /_/ /_  ___  _______  ___  _______
