@@ -167,3 +167,14 @@ func TestNativeGitScanner_FullHistory_IncludesRootCommit(t *testing.T) {
 		t.Fatal("expected full-history scan to surface the secret from the root commit, which was later removed from HEAD")
 	}
 }
+
+func TestNativeGitScanner_RejectsFlagShapedRef(t *testing.T) {
+	dir := testRepo(t)
+	s := gitscanner.NewNative()
+
+	for _, ref := range []string{"--help", "-h", "--output=/tmp/x"} {
+		if _, err := s.Scan(context.Background(), gitscanner.Repository{Path: dir, Mode: gitscanner.ModeCommit, Ref: ref}, cerberus.ScanOptions{}); err == nil {
+			t.Errorf("expected ref %q to be rejected (flag injection), got nil error", ref)
+		}
+	}
+}

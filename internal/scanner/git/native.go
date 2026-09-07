@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -89,8 +90,17 @@ func (s *NativeGitScanner) scanWorkingTree(ctx context.Context, repo Repository)
 			if err != nil || !info.Mode().IsRegular() || info.Size() > maxFileSize {
 				continue
 			}
-			content, err := os.ReadFile(abs) // #nosec G304 -- abs is repo.Path joined with a path git itself reported via ls-files
-			if err != nil || looksBinary(content) {
+			// Open + LimitReader (not ReadFile): the file may grow
+			// between Lstat and read (TOCTOU). Cap the read so a
+			// concurrently-growing file cannot blow up memory; skip
+			// files that exceed the cap.
+			f, err := os.Open(abs) // #nosec G304 -- abs is repo.Path joined with a path git itself reported via ls-files
+			if err != nil {
+				continue
+			}
+			content, err := io.ReadAll(io.LimitReader(f, maxFileSize+1))
+			_ = f.Close()
+			if err != nil || int64(len(content)) > maxFileSize || looksBinary(content) {
 				continue
 			}
 			send(ctx, ch, cerberus.Artifact{
@@ -243,6 +253,18 @@ func (s *NativeGitScanner) scanFullHistory(ctx context.Context, repo Repository)
 }
 
 func (s *NativeGitScanner) resolveRef(ctx context.Context, dir, ref string) (string, error) {
+	if ref == "" {
+		return "", fmt.Errorf("git scanner: empty ref")
+	}
+	// Mitigate flag injection: a ref starting with "-" would be parsed
+	// as a git option ("--help", "--output=..."). Valid refs (SHA hex,
+	// branch/tag names per git check-ref-format) never start with "-",
+	// so reject them outright. (Note: `rev-parse --verify` does not
+	// accept a "--" end-of-options separator, so filtering is the
+	// correct defense here, not "--".)
+	if ref[0] == '-' {
+		return "", fmt.Errorf("git scanner: invalid ref %q (must not start with '-')", ref)
+	}
 	out, err := s.run(ctx, dir, "rev-parse", "--verify", ref)
 	if err != nil {
 		return "", fmt.Errorf("resolving ref %q: %w", ref, err)
@@ -280,6 +302,28 @@ func splitLines(out []byte) []string {
 		line := strings.TrimSpace(scanner.Text())
 		if line != "" {
 			lines = append(lines, line)
+		}
+	}
+	// Scanner errors (e.g. a line exceeding the 1MB buffer) must not be
+	// silently swallowed: callers would otherwise miss commits/files
+	// with no indication. overlong lines are rare for SHA/filename
+	// output; surface them via the returned set being complete-or-empty
+	// is out of scope here, so at minimum fall back to a byte split so
+	// no data is silently dropped.
+	if err := scanner.Err(); err != nil {
+		for _, bline := range bytes.Split(out, []byte{'\n'}) {
+			if line := strings.TrimSpace(string(bline)); line != "" {
+				found := false
+				for _, existing := range lines {
+					if existing == line {
+						found = true
+						break
+					}
+				}
+				if !found {
+					lines = append(lines, line)
+				}
+			}
 		}
 	}
 	return lines

@@ -15,7 +15,7 @@ before opening a PR.
 
 ## Development setup
 
-Requires Go 1.25+.
+Requires Go 1.27+.
 
 ```bash
 git clone https://github.com/HaK0exe/cerberus.git
@@ -29,7 +29,7 @@ Useful commands:
 ```bash
 go vet ./...
 gofmt -l .              # should print nothing
-go run ./cmd/cerberus scan file testdata/corpus/true-positives/*
+go run ./cmd/cerberus scan file testdata/corpus/true_positive/*
 ```
 
 ## Branching model
@@ -72,9 +72,9 @@ go run ./cmd/cerberus scan file testdata/corpus/true-positives/*
 See [`docs/development/writing-rules.md`](docs/development/writing-rules.md).
 New rules should ship with:
 
-- at least one true-positive sample in `testdata/corpus/true-positives/`
+- at least one true-positive sample in `testdata/corpus/true_positive/`
 - at least one realistic false-positive sample in
-  `testdata/corpus/false-positives/` if the rule is prone to noise
+  `testdata/corpus/false_positive/` if the rule is prone to noise
 
 ## Reporting security issues
 

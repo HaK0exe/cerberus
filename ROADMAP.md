@@ -36,7 +36,7 @@ LLM trust, remediation separation.
 
 **Release:** `v0.1.0-alpha.1`
 
-## Sprint 2 — Git & web scanners (weeks 3–4)
+## Sprint 2 — Git & web scanners (done)
 
 Git: working tree / staged / history via Gitleaks + native adapters,
 SARIF output. Web: Colly-based crawler, scope/robots/depth/rate-limit,
@@ -46,7 +46,7 @@ implementations.
 
 **Release:** `v0.1.0-alpha.2`
 
-## Sprint 3 — Local LLM validation (weeks 5–6)
+## Sprint 3 — Local LLM validation (done)
 
 `Validator` interface, Ollama adapter, llama.cpp fallback, versioned
 prompt templates, structured JSON output, HMAC-keyed response cache,
@@ -112,21 +112,21 @@ prompt template version, MCP schema version, database schema version.
 
 ## Definition of Done — v1.0
 
-- [ ] Git full-history scanning
-- [ ] Secure web crawling (SSRF-hardened)
-- [ ] JavaScript analysis
-- [ ] Configurable rules
-- [ ] Entropy/context scoring
-- [ ] Ollama optional, no cloud LLM required
+- [x] Git full-history scanning
+- [x] Secure web crawling (SSRF-hardened)
+- [x] JavaScript analysis
+- [x] Configurable rules
+- [x] Entropy/context scoring
+- [x] Ollama optional, no cloud LLM required
 - [ ] MCP server functional with scoped permissions
 - [ ] API functional
 - [ ] Terraform AWS deployment
 - [ ] Controlled AWS remediation (dry-run default, approval-gated)
 - [ ] RBAC
-- [ ] Append-only audit trail
+- [x] Append-only audit trail
 - [ ] SBOM + signed binaries
 - [ ] Fuzzing in CI
 - [ ] Independent security review
-- [ ] Benchmark corpus with published precision/recall
+- [x] Benchmark corpus with published precision/recall
 - [ ] Complete documentation set
-- [ ] Open-source governance in place
+- [x] Open-source governance in place

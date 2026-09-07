@@ -147,10 +147,25 @@ func (q *Queue) Consume(ctx context.Context, queue string) (<-chan []byte, error
 					return
 				}
 				if m.ReceiptHandle != nil {
-					_, _ = q.Client.DeleteMessage(ctx, &awssqs.DeleteMessageInput{
+					// Delete-after-delivery: a failed delete means SQS will
+					// redeliver (at-least-once) rather than lose the message.
+					// Retry once after a short backoff so transient API
+					// errors don't immediately cause duplicates; a
+					// persistent failure still redelivers, which is safer
+					// than silently dropping work.
+					if _, err := q.Client.DeleteMessage(ctx, &awssqs.DeleteMessageInput{
 						QueueUrl:      &queue,
 						ReceiptHandle: m.ReceiptHandle,
-					})
+					}); err != nil && ctx.Err() == nil {
+						select {
+						case <-time.After(pollBackoff):
+							_, _ = q.Client.DeleteMessage(ctx, &awssqs.DeleteMessageInput{
+								QueueUrl:      &queue,
+								ReceiptHandle: m.ReceiptHandle,
+							})
+						case <-ctx.Done():
+						}
+					}
 				}
 			}
 		}

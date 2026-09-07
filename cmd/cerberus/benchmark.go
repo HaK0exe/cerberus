@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -30,15 +29,10 @@ import (
 // "with LLM" measurement in that report is left as an explicit TODO
 // rather than fabricated.
 //
-// Both detectors are built directly against detector.New here (rather
-// than reusing scan.go's buildDetector) because buildDetector always
-// passes WithMinEmitBand(BandLowConfidence) — a debug/rule-testing
-// override documented on that option — which would emit llm_review-
-// band candidates regardless of the Validator's verdict and defeat
-// the point of this benchmark. The quality gate in ROADMAP.md is about
-// the pipeline's real default (WithMinEmitBand unset, i.e.
-// BandFinding — see docs/architecture/scoring.md), so that's what's
-// measured here.
+// The command reports both the strict detector baseline used for the
+// LLM quality comparison and the CLI's shipping low-confidence emission
+// policy. Keeping both visible prevents a benchmark that silently
+// measures different behavior from the executable users actually run.
 func newBenchmarkCmd(flags *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "benchmark",
@@ -61,7 +55,7 @@ func newBenchmarkCorpusCmd(flags *globalFlags) *cobra.Command {
 				return fmt.Errorf("--llm requires --offline=false (cerberus never makes a network call, including to a local Ollama/llama.cpp server, unless you explicitly opt out of --offline)")
 			}
 
-			samples, err := benchmark.LoadCorpus(os.DirFS("."), corpusDir)
+			samples, err := loadCorpus(corpusDir)
 			if err != nil {
 				return fmt.Errorf("loading corpus: %w", err)
 			}
@@ -78,9 +72,19 @@ func newBenchmarkCorpusCmd(flags *globalFlags) *cobra.Command {
 			}
 
 			fmt.Printf("corpus:   %d samples (%s)\n", len(samples), corpusDir)
-			printMetrics(cmd.OutOrStdout(), "baseline (no LLM)", baseRes.Metrics)
+			printMetrics(cmd.OutOrStdout(), "strict baseline (finding band only, no LLM)", baseRes.Metrics)
 			if verbose {
 				printSampleOutcomes(cmd.OutOrStdout(), baseRes)
+			}
+
+			cliBaseline := detector.New(compiled, fp, detector.WithMinEmitBand(detector.BandLowConfidence))
+			cliRes, err := benchmark.Run(cmd.Context(), cliBaseline, samples)
+			if err != nil {
+				return fmt.Errorf("running CLI baseline benchmark: %w", err)
+			}
+			printMetrics(cmd.OutOrStdout(), "shipping CLI baseline (low-confidence and above, no LLM)", cliRes.Metrics)
+			if verbose {
+				printSampleOutcomes(cmd.OutOrStdout(), cliRes)
 			}
 
 			if lf.enabled {
@@ -120,7 +124,7 @@ func newBenchmarkCorpusCmd(flags *globalFlags) *cobra.Command {
 // fingerprint key — same pattern as scan.go's buildDetector, minus the
 // BandLowConfidence override (see newBenchmarkCmd's doc comment).
 func loadBenchmarkRules(rulesDir string) ([]rules.CompiledRule, *policy.Fingerprinter, error) {
-	compiled, err := rules.LoadDir(os.DirFS("."), rulesDir)
+	compiled, err := loadRules(rulesDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading rules from %s: %w", rulesDir, err)
 	}

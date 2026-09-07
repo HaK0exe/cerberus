@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # cerberus-worker is not implemented yet (Sprint 4) — see
 # cerberus-api.Dockerfile for the rationale of building the stub now.
-FROM golang:1.25-bookworm AS build
+FROM golang:1.27-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

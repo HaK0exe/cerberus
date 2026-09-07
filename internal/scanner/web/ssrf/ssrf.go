@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	utls "github.com/refraction-networking/utls"
 )
 
 // ErrBlockedAddress is returned (wrapped) when a resolved IP falls
@@ -107,16 +109,33 @@ type Guard struct {
 	// infrastructure by accident; a proxy is deliberate routing, and
 	// the operator configuring it owns that responsibility.
 	ProxyURL *url.URL
+	// TLSFingerprint, when non-zero, replaces Go's native TLS
+	// ClientHello with one shaped like a real browser's (via uTLS),
+	// for engagements where a WAF/CDN fingerprints the TLS handshake
+	// itself (JA3) rather than just HTTP-level signals. See
+	// tls_fingerprint.go. Ignored when ProxyURL is set: a proxy owns
+	// the connection to the target (see ProxyURL's doc comment), and
+	// tunneling a hand-rolled TLS handshake through an HTTP CONNECT or
+	// SOCKS5 proxy is out of scope here — the request still goes out,
+	// just without the fingerprint override.
+	TLSFingerprint utls.ClientHelloID
 }
 
 // NewGuard returns a Guard configured with the package defaults.
 func NewGuard() *Guard {
 	return &Guard{
 		Resolver:     net.DefaultResolver,
-		BlockedNets:  defaultBlockedNets,
+		BlockedNets:  append([]*net.IPNet(nil), defaultBlockedNets...),
 		MaxRedirects: 10,
 		DialTimeout:  10 * time.Second,
 	}
+}
+
+func (g *Guard) dialTimeout() time.Duration {
+	if g.DialTimeout > 0 {
+		return g.DialTimeout
+	}
+	return 10 * time.Second
 }
 
 func (g *Guard) blockedNets() []*net.IPNet {
@@ -139,6 +158,12 @@ func (g *Guard) resolver() Resolver {
 func (g *Guard) ValidateIP(ip net.IP) error {
 	if ip == nil {
 		return fmt.Errorf("ssrf: nil IP")
+	}
+	// Normalize IPv4-mapped IPv6 (::ffff:10.0.0.1) to IPv4 so IPv4
+	// blocklists apply; without this an attacker could smuggle a
+	// private IPv4 through its 6-byte-mapped form.
+	if ip4 := ip.To4(); ip4 != nil {
+		ip = ip4
 	}
 	if ip.Equal(metadataIP) {
 		return fmt.Errorf("%w: %s (cloud metadata endpoint)", ErrBlockedAddress, ip)
@@ -205,7 +230,7 @@ func (g *Guard) safeDialContext(ctx context.Context, network, addr string) (net.
 		return nil, err
 	}
 
-	dialer := &net.Dialer{Timeout: g.DialTimeout}
+	dialer := &net.Dialer{Timeout: g.dialTimeout()}
 	return dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 }
 
@@ -229,8 +254,13 @@ func (g *Guard) NewClient(extraCheck func(req *http.Request) error) *http.Client
 		// resolution, so DialContext reverts to a plain dialer here
 		// (it now only ever connects to the proxy itself, not the
 		// scan target) and Transport.Proxy takes over routing.
-		transport.DialContext = (&net.Dialer{Timeout: g.DialTimeout}).DialContext
+		transport.DialContext = (&net.Dialer{Timeout: g.dialTimeout()}).DialContext
 		transport.Proxy = http.ProxyURL(g.ProxyURL)
+	} else if g.TLSFingerprint.Client != "" {
+		// DialTLSContext takes over the handshake entirely, so
+		// TLSClientConfig above is unused for https requests in this
+		// mode (still harmless to leave set).
+		transport.DialTLSContext = g.dialTLSWithFingerprint(g.TLSFingerprint)
 	}
 
 	maxRedirects := g.MaxRedirects

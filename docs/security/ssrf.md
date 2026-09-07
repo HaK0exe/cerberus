@@ -1,9 +1,13 @@
 # SSRF protections (web scanner)
 
-**Status: planned for Sprint 2** (`internal/scanner/web`). This
-document specifies the required control before any web-crawling code
-is merged; treat it as an acceptance-criteria checklist for that work,
-not a description of code that exists yet.
+**Status: implemented** in `internal/scanner/web` and
+`internal/scanner/web/ssrf`. The required cases below are exercised by
+the web scanner's security test suite.
+
+Proxy-side DNS resolution cannot provide Cerberus's dial-time IP
+pinning guarantee, so the CLI rejects `--proxy`. Proxy support must not
+be enabled until the same before-request, redirect-hop, and dial-time
+validation can be demonstrated end to end.
 
 ## Required control flow
 

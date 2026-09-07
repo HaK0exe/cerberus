@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
-# cerberus-mcp is not implemented yet (Sprint 4) — see
-# cerberus-api.Dockerfile for the rationale of building the stub now.
-FROM golang:1.25-bookworm AS build
+# The standalone MCP binary currently serves stdio. It is not an HTTP
+# service and still exposes honest stubs for scan orchestration and
+# remediation execution.
+FROM golang:1.27-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

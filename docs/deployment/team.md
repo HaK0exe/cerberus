@@ -24,7 +24,7 @@ scaffolding for Sprint 4, not a working service, as of this writing:
 | `ollama` | **Works.** Starts and serves the Ollama API on the internal network — usable directly, same as [local.md](local.md)'s `--llm` flag but pointed at `http://ollama:11434` from another container. |
 | `cerberus-api` | **Stub.** `cmd/cerberus-api/main.go` prints "not implemented yet" and calls `os.Exit(1)`. The container builds and starts; the process inside exits immediately. `restart: "no"` in the compose file is deliberate — this must not crash-loop. |
 | `cerberus-worker` | **Stub**, same as above (`cmd/cerberus-worker`). |
-| `cerberus-mcp` | **Stub**, same as above (`cmd/cerberus-mcp`) — this is despite `internal/mcp`'s tool-dispatch pipeline (`Server.Dispatch`) being real and tested (see `docs/adr/0009-mcp-v2.md`); no stdio/HTTP transport connects it to this binary yet. Until then, use `cerberus mcp tools`/`cerberus mcp call` from the LOCAL profile, which exercise the same `internal/mcp.Server` in-process. |
+| `cerberus-mcp` | **Stdio-only.** The transport and scoped read tools work, while scan orchestration and remediation tools are explicit stubs. Compose cannot turn a stdio MCP process into a network service; use it from an MCP client configuration or use `cerberus mcp tools`/`cerberus mcp call` locally. |
 
 ## The Postgres gap
 

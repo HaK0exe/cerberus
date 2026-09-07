@@ -6,6 +6,7 @@ package findings
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/HaK0exe/cerberus/pkg/cerberus"
@@ -70,9 +71,13 @@ func (s *MemStore) List(_ context.Context, filter Filter) ([]cerberus.Finding, e
 			continue
 		}
 		out = append(out, f)
-		if filter.Limit > 0 && len(out) >= filter.Limit {
-			break
-		}
+	}
+	// Deterministic order: map iteration is random, and Limit truncates,
+	// so an unsorted List would return a different subset on every call.
+	// Sort by ID (unique, stable) for reproducible output.
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	if filter.Limit > 0 && len(out) > filter.Limit {
+		out = out[:filter.Limit]
 	}
 	return out, nil
 }

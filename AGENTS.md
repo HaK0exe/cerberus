@@ -1,6 +1,6 @@
 # AGENTS.md — Cerberus
 
-Single Go module (`github.com/HaK0exe/cerberus`, Go 1.25+). Binaries in `cmd/` (`cerberus` CLI + `cerberus-api/worker/mcp` stubs); public contract in `pkg/cerberus`; implementations in `internal/`.
+Single Go module (`github.com/HaK0exe/cerberus`, Go 1.27+). Binaries in `cmd/` (`cerberus` CLI + `cerberus-api/worker/mcp`); public contract in `pkg/cerberus`; implementations in `internal/`.
 
 ## Verify (CI gate — all must pass)
 

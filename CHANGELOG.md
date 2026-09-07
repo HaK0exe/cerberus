@@ -8,6 +8,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Reproducible CLI release pipeline: cross-platform archives,
+  checksums, SPDX/CycloneDX SBOMs, keyless Sigstore signing, and GitHub
+  build-provenance attestations.
+- Embedded default rules and LLM prompts, allowing an installed
+  `cerberus` binary to run from any working directory; absolute custom
+  rules directories are supported.
+- Corpus quality floor test and benchmark output for both the strict
+  finding-only detector and the low-confidence-inclusive policy used
+  by the shipping CLI.
+
 - Repository scaffold: module layout (`cmd/`, `pkg/cerberus`,
   `internal/*`), governance and community files, CI skeleton.
 - Domain model: `Artifact`, `Candidate`, `Finding`, `Rule`, and the
@@ -17,8 +27,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   fingerprinting, masked-prefix rendering.
 - Initial rule set: AWS keys, GitHub tokens, Stripe keys, generic
   JWT/API-key/password patterns, PEM private keys.
-- CLI (`cerberus`): `scan file`, `rules list`, `rules test`; stubs for
-  `git scan`, `web scan`, `findings`, `remediation`, `server`, `mcp`.
+- CLI commands for file, Git/history, web/JavaScript, rule, benchmark,
+  correlation, policy, remediation planning, and MCP stdio workflows.
 - Unit tests for the detection engine.
 - `cerberus git scan`: functional NativeGitScanner (working tree,
   staged, commit, branch, full history) shelling out to `git`, wired
@@ -164,24 +174,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   recursively so nested source-type subdirectories load alongside the
   existing flat samples (#13).
 
-### Deviations from the original issue scope
+### Changed
 
-- S2-11 was scoped as an "SQS frontier"; SQS support itself is S2-10,
-  which has not landed yet. `internal/scanner/web/frontier` implements
-  the full message schema, canonicalization, and dedup semantics S2-11
-  requires against `cerberus.JobQueue`/`internal/queue.MemQueue`
-  instead, so it drops in against a real SQS-backed `JobQueue` with no
-  interface changes once S2-10 exists. The single-process
-  `cerberus web scan` CLI path does not (yet) drive multiple worker
-  processes off this frontier — that requires a `cerberus web worker`
-  command, deliberately left for when S2-10 lands. See the comment on
-  issue #11 for the same note.
-- S3-10 (#23) initially shipped with only the "without LLM" baseline
-  measured (no Ollama/llama.cpp server was available at the time);
-  the "with LLM" side was completed in a follow-up once a local Ollama
-  server (`gemma3:4b`) became available — see
-  `docs/architecture/llm-quality-gate.md`'s "LLM-assisted measurement"
-  section for the real result and the quality-gate decision it
-  produced (LLM stage stays opt-in: recall/F1 improved but precision
-  did not, on a 22-sample corpus too small to be conclusive either
-  way).
+- Proxy crawling is rejected until proxy-side DNS resolution can
+  preserve mandatory dial-time SSRF validation.
+- CLI errors print once, and `--quiet` now suppresses the ephemeral
+  fingerprint-key warning.
+
+### Known limitations
+
+- The HTTP API, distributed workers, persistent cloud storage, MCP
+  scan orchestration, and remediation execution are not implemented.
+- The LLM-assisted quality measurement must be rerun against the
+  expanded 202-file corpus before LLM review can be considered for
+  default enablement.

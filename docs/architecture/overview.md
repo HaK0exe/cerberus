@@ -89,4 +89,4 @@ runtime view.
   default).
 - **Cloud (AWS, Sprint 4+)**: API Gateway → Lambda (API) →
   SQS → Lambda/Fargate workers → DynamoDB, fronted by AWS WAF. See
-  [`../deployment/aws.md`](../deployment/aws.md) (added in Sprint 4).
+  [`../deployment/cloud.md`](../deployment/cloud.md).
