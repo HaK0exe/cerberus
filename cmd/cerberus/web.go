@@ -17,7 +17,7 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 	var depth, maxPages, concurrency int
 	var rateLimit, jitter float64
 	var allowedDomains, excludePaths []string
-	var ignoreRobots, scanJS, unmask, ninja bool
+	var ignoreRobots, scanJS, ninja bool
 	var userAgent, proxy string
 
 	scan := &cobra.Command{
@@ -33,9 +33,6 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 			if ninja {
 				if flags.offline {
 					return fmt.Errorf("--ninja requires --offline=false (web scan makes outbound network calls by design)")
-				}
-				if unmask {
-					return fmt.Errorf("--ninja cannot be combined with --unmask (would print raw secrets to stdout)")
 				}
 				if flags.verbose > 0 {
 					return fmt.Errorf("--ninja cannot be combined with -v/--verbose (per-request diagnostics leak crawl behavior)")
@@ -114,9 +111,7 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 				}
 			}
 
-			warnUnmask(ui, unmask)
-
-			d, err := buildDetector(flags.rulesDir, nil, unmask, ui)
+			d, err := buildDetector(flags.rulesDir, nil, ui)
 			if err != nil {
 				return err
 			}
@@ -176,7 +171,6 @@ func newWebCmd(flags *globalFlags) *cobra.Command {
 	scan.Flags().StringVar(&proxy, "proxy", "", "reserved; currently rejected because proxy DNS cannot preserve the SSRF invariant")
 	scan.Flags().Float64Var(&jitter, "jitter", 0, "max extra random delay in seconds between requests")
 	scan.Flags().BoolVar(&ninja, "ninja", false, "low-profile crawl: browser UA, slow irregular cadence, no robots.txt (requires --offline=false, --allowed-domains, --format json|sarif)")
-	scan.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
 
 	web.AddCommand(scan)
 	return web

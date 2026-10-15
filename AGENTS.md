@@ -25,7 +25,7 @@ govulncheck ./...
 
 ## Security invariants (never violate; security-touching PRs need 2 reviewers + ADR/threat-model update)
 
-- **No raw secret persists.** `Finding` carries HMAC fingerprint + masked prefix + location/score only. Never log/print/store the value; `--unmask` is local-triage-only, never in CI/logs.
+- **Reveal-by-design (operator choice).** `Finding.MaskedPrefix` carries the detected value in clear — no masking, no `--unmask` flag. Never pipe findings output to shared logs/CI artifacts; treat stdout/SARIF/JSON as secret-bearing.
 - **LLM is never sovereign.** Opt-in via `--llm` + `--offline=false` only; it sees sanitized input, gets no tools/network, and can only nudge `llm_review`-band scores — never delete findings or trigger remediation.
 - **Detection ≠ remediation.** Scanner has zero mutating permissions; remediation defaults to dry-run + human approval.
 - **Web scanner:** DNS+IP validation before AND after every redirect; block RFC1918/loopback/link-local/`169.254.169.254`. Respect `robots.txt` by default. Report vulns privately via GitHub Security Advisories, never a public issue.

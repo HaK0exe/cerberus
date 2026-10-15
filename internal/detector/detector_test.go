@@ -53,8 +53,8 @@ func TestDetect_AWSAccessKey(t *testing.T) {
 			if f.Fingerprint == "" {
 				t.Error("expected non-empty fingerprint")
 			}
-			if f.MaskedPrefix != "AKIA****************" {
-				t.Errorf("unexpected masked prefix: %q", f.MaskedPrefix)
+			if f.MaskedPrefix != "AKIAABCDEFGHIJKLMNOP" {
+				t.Errorf("unexpected revealed value: %q", f.MaskedPrefix)
 			}
 		}
 	}

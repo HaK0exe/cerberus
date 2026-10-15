@@ -12,7 +12,7 @@ import (
 func newGitCmd(flags *globalFlags) *cobra.Command {
 	git := &cobra.Command{Use: "git", Short: "Git repository scanning"}
 
-	var staged, history, unmask bool
+	var staged, history bool
 	var branch, commit, failOn string
 
 	scan := &cobra.Command{
@@ -39,9 +39,7 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 				mode, ref = gitscanner.ModeBranch, branch
 			}
 
-			warnUnmask(flags.UI(), unmask)
-
-			d, err := buildDetector(flags.rulesDir, nil, unmask, flags.UI())
+			d, err := buildDetector(flags.rulesDir, nil, flags.UI())
 			if err != nil {
 				return err
 			}
@@ -75,7 +73,6 @@ func newGitCmd(flags *globalFlags) *cobra.Command {
 	scan.Flags().BoolVar(&history, "history", false, "scan full commit history")
 	scan.Flags().StringVar(&branch, "branch", "", "scan a specific branch")
 	scan.Flags().StringVar(&commit, "commit", "", "scan a specific commit")
-	scan.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
 	scan.Flags().StringVar(&failOn, "fail-on", "", "exit non-zero if any finding is at or above this severity: critical|high|medium|low (default: never fail, exit 0) — for CI/git-hook gating")
 
 	git.AddCommand(scan)

@@ -47,7 +47,6 @@ type llmFlags struct {
 
 func newScanFileCmd(flags *globalFlags) *cobra.Command {
 	lf := &llmFlags{}
-	var unmask bool
 	var failOn string
 
 	cmd := &cobra.Command{
@@ -62,9 +61,8 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 			if lf.enabled && flags.offline {
 				return fmt.Errorf("--llm requires --offline=false (cerberus never makes a network call, including to a local Ollama/llama.cpp server, unless you explicitly opt out of --offline)")
 			}
-			warnUnmask(flags.UI(), unmask)
 
-			d, err := buildDetector(flags.rulesDir, lf, unmask, flags.UI())
+			d, err := buildDetector(flags.rulesDir, lf, flags.UI())
 			if err != nil {
 				return err
 			}
@@ -102,7 +100,6 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 	cmd.Flags().StringVar(&lf.baseURL, "llm-base-url", ollama.DefaultBaseURL, "base URL of the local Ollama server")
 	cmd.Flags().StringVar(&lf.llamacppBaseURL, "llm-fallback-base-url", "", "base URL of a local llama.cpp server used as a fallback if Ollama is unavailable (disabled if empty)")
 	cmd.Flags().StringVar(&lf.llamacppModel, "llm-fallback-model", "", "model name/path to request from the llama.cpp fallback server (defaults to --llm-model)")
-	cmd.Flags().BoolVar(&unmask, "unmask", false, "print full secret values instead of a masked hint (local triage only — never use in CI/logs)")
 	cmd.Flags().StringVar(&failOn, "fail-on", "", "exit non-zero if any finding is at or above this severity: critical|high|medium|low (default: never fail, exit 0) — for CI/git-hook gating")
 
 	return cmd
@@ -120,7 +117,7 @@ func newScanFileCmd(flags *globalFlags) *cobra.Command {
 // invocations: set CERBERUS_FINGERPRINT_KEY (hex or raw, >=16 bytes) or
 // CERBERUS_FINGERPRINT_KEY_FILE (path to a file holding the key) for
 // stable dedup/correlation across runs.
-func buildDetector(rulesDir string, lf *llmFlags, unmask bool, ui *cliui.UI) (*detector.Detector, error) {
+func buildDetector(rulesDir string, lf *llmFlags, ui *cliui.UI) (*detector.Detector, error) {
 	compiled, err := loadRules(rulesDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading rules from %s: %w", rulesDir, err)
@@ -143,7 +140,6 @@ func buildDetector(rulesDir string, lf *llmFlags, unmask bool, ui *cliui.UI) (*d
 
 	opts := []detector.Option{
 		detector.WithMinEmitBand(detector.BandLowConfidence),
-		detector.WithRevealSecrets(unmask),
 	}
 
 	if lf != nil && lf.enabled {
@@ -331,9 +327,9 @@ func renderFindings(ui *cliui.UI, format string, findings []cerberus.Finding) er
 
 // explainFinding prints the per-signal breakdown behind a Finding's
 // Confidence — the offline equivalent of `cerberus findings explain
-// <id>` (Sprint 4, once findings are server-persisted). Never prints a
-// raw secret value: only what Finding/DetectionProvenance already
-// carry (masked prefix, signals, rule/ruleset identity).
+// <id>` (Sprint 4, once findings are server-persisted). It prints the
+// detected value as stored on the Finding (this build reveals secrets
+// by design — do not pipe explain output to shared logs).
 func explainFinding(f cerberus.Finding) {
 	fmt.Printf("%s  %s  %s%s\n", f.Type, f.MaskedPrefix, f.Path, commitSuffix(f.Commit))
 	fmt.Println()
@@ -368,16 +364,6 @@ func summaryLine(total int, counts map[cerberus.Severity]int) string {
 		noun = "finding"
 	}
 	return fmt.Sprintf("%d %s (%s)", total, noun, strings.Join(parts, ", "))
-}
-
-// warnUnmask surfaces a one-line reminder on stderr whenever --unmask
-// is set, since it's the one flag in this CLI that puts raw secret
-// material on stdout (and therefore in scrollback, redirected files,
-// or CI logs if the caller isn't careful).
-func warnUnmask(ui *cliui.UI, unmask bool) {
-	if unmask {
-		ui.Warnf("--unmask is on: full secret values will be printed — do not use in CI or pipe to logs")
-	}
 }
 
 func commitSuffix(commit string) string {

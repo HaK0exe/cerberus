@@ -35,10 +35,11 @@ See [`docs/architecture/`](docs/architecture) for the full design and
 
 ## Core principles
 
-1. **No raw secret persists, ever, by default.** Findings store a
-   type, provider, HMAC fingerprint, masked prefix, length, source
-   location, score, and timestamp — never the secret value itself, in
-   logs, traces, metrics, storage, or API/MCP responses.
+1. **Findings reveal values by design.** Findings store a
+   type, provider, HMAC fingerprint, detected value, length, source
+   location, score, and timestamp. Treat all findings output
+   (stdout, JSON, SARIF) as secret-bearing — never ship it to
+   shared logs or untrusted stores.
 2. **Detection and remediation are architecturally separate.** The
    scanner has zero IAM/GitHub/Vault-mutating permissions. See
    `Scanner → Detector → Finding Store → Remediation Planner →

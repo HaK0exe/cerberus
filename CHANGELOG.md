@@ -8,6 +8,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Broad credential-sweep rules (`rules/generic/credentials.yaml`):
+  `generic-credential-assignment` (case-insensitive alternation of
+  ~100 secret-bearing key names in `key = value` / `key: value`
+  position) and `google-maps-api-key` (bare `AIza` keys), with
+  low-confidence/llm_review-band calibration so the shipping CLI
+  emits them without auto-finding.
+- Reveal-by-design findings: `Finding.MaskedPrefix` carries the
+  detected value in clear; the `--unmask` flag (now redundant) is
+  removed from `scan file`, `git scan`, and `web scan`, along with
+  the `--ninja`/`--unmask` mutual exclusion. `--ninja` low-profile
+  crawling itself is unchanged.
+
 - Reproducible CLI release pipeline: cross-platform archives,
   checksums, SPDX/CycloneDX SBOMs, keyless Sigstore signing, and GitHub
   build-provenance attestations.

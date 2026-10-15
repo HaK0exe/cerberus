@@ -24,11 +24,11 @@ const (
 	SeverityCritical Severity = "critical"
 )
 
-// Finding is the persisted, safe-to-store representation of a detected
-// secret. It MUST NOT contain the raw secret value: only fingerprint,
-// masked prefix, and metadata needed to locate and triage it.
-//
-// See docs/adr/0001-no-raw-secret-storage.md for the rationale.
+// Finding is the persisted representation of a detected secret. In
+// this build it carries the detected value in clear in MaskedPrefix
+// (reveal-by-design: no masking, no --unmask opt-in) plus fingerprint,
+// location/score metadata needed to locate and triage it. Do not ship
+// findings output to shared logs or untrusted stores.
 type Finding struct {
 	ID         string
 	RuleID     string
@@ -41,8 +41,9 @@ type Finding struct {
 	// without ever storing or logging the secret itself.
 	Fingerprint string
 
-	// MaskedPrefix is a human-readable, non-reversible hint such as
-	// "AKIA************".
+	// MaskedPrefix carries the detected value in clear in this build
+	// (reveal-by-design). The name is kept for wire-format
+	// compatibility with SARIF/MCP/API consumers.
 	MaskedPrefix string
 	Length       int
 
